@@ -30,3 +30,5 @@ require dirname( __FILE__ ) . '/classes/class-bp-email-recipient.php';
 require dirname( __FILE__ ) . '/classes/class-bp-email.php';
 require dirname( __FILE__ ) . '/classes/class-bp-email-delivery.php';
 require dirname( __FILE__ ) . '/classes/class-bp-phpmailer.php';
+require dirname( __FILE__ ) . '/classes/class-bp-invitations-component.php';
+require dirname( __FILE__ ) . '/classes/class-bp-invitations-invitation.php';

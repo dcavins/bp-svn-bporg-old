@@ -503,6 +503,7 @@ class BuddyPress {
 		require( $this->plugin_dir . 'bp-core/bp-core-moderation.php'       );
 		require( $this->plugin_dir . 'bp-core/bp-core-loader.php'           );
 		require( $this->plugin_dir . 'bp-core/bp-core-customizer-email.php' );
+		require( $this->plugin_dir . 'bp-core/bp-core-invitations.php'      );
 
 		if ( ! $this->do_autoload ) {
 			require( $this->plugin_dir . 'bp-core/bp-core-classes.php' );
@@ -577,6 +578,8 @@ class BuddyPress {
 			'BP_Walker_Category_Checklist' => 'core',
 			'BP_Walker_Nav_Menu_Checklist' => 'core',
 			'BP_Walker_Nav_Menu'           => 'core',
+			'BP_Invitations_Component'     => 'core',
+			'BP_Invitations_Invitation'    => 'core',
 
 			'BP_Core_Friends_Widget' => 'friends',
 

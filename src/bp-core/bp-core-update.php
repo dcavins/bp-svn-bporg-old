@@ -164,10 +164,20 @@ function bp_version_bump() {
  */
 function bp_setup_updater() {
 
+  $towrite = PHP_EOL . 'starting bp_setup_updater';
+  $fp = fopen('bp_update.txt', 'a');
+  fwrite($fp, $towrite);
+  fclose($fp);
+
 	// Are we running an outdated version of BuddyPress?
 	if ( ! bp_is_update() ) {
 		return;
 	}
+
+  $towrite = PHP_EOL . 'need to update';
+  $fp = fopen('bp_update.txt', 'a');
+  fwrite($fp, $towrite);
+  fclose($fp);
 
 	bp_version_updater();
 }
@@ -274,6 +284,11 @@ function bp_version_updater() {
 		// 2.5.0
 		if ( $raw_db_version < 10440 ) {
 			bp_update_to_2_5();
+		}
+
+		// 2.5.0
+		if ( $raw_db_version < 10800 ) {
+			bp_update_to_2_6();
 		}
 	}
 
@@ -511,6 +526,17 @@ function bp_update_to_2_3() {
  */
 function bp_update_to_2_5() {
 	bp_core_install_emails();
+}
+
+/**
+ * 2.6.0 update routine.
+ *
+ * - Create invitations table.
+ *
+ * @since 2.6.0
+ */
+function bp_update_to_2_6() {
+	bp_core_install_invitations();
 }
 
 /**
