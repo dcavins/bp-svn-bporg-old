@@ -445,10 +445,12 @@ class BP_Invitations_Invitation {
 		}
 
 		// accepted
-		if ( ! empty( $args['accepted'] ) ) {
-			$where_conditions['accepted'] = "accepted = 1";
-		} else {
-			$where_conditions['accepted'] = "accepted = 0";
+		if ( ! empty( $args['accepted'] ) && 'all' !== $args['accepted'] ) {
+			if ( $args['accepted'] == 'pending' ) {
+				$where_conditions['accepted'] = "accepted = 0";
+			} else if ( $args['accepted'] == 'accepted' ) {
+				$where_conditions['accepted'] = "accepted = 1";
+			}
 		}
 
 		// search_terms
@@ -675,35 +677,49 @@ class BP_Invitations_Invitation {
 	 *     Associative array of arguments. All arguments but $page and
 	 *     $per_page can be treated as filter values for get_where_sql()
 	 *     and get_query_clauses(). All items are optional.
-	 *     @type int|array $id ID of invitation being updated. Can be an
-	 *           array of IDs.
-	 *     @type int|array $user_id ID of user being queried. Can be an
-	 *           array of user IDs.
-	 *     @type int|array $inviter_id ID of user who created the invitation.
-	 *			 Can be an array of user IDs.
-	 *     @type string|array $invitee_email Email address of invited users
-	 *			 being queried. Can be an array of email addresses.
-	 *     @type string|array $component_name Name of the component to
-	 *           filter by. Can be an array of component names.
-	 *     @type string|array $component_action Name of the action to
-	 *           filter by. Can be an array of actions.
-	 *     @type int|array $item_id ID of associated item. Can be an array
-	 *           of multiple item IDs.
-	 *     @type int|array $secondary_item_id ID of secondary associated
-	 *           item. Can be an array of multiple IDs.
-	 *     @type string $invite_sent Limit to draft, sent or all invitations.
-	 *			 'draft' returns only unsent invitations, 'sent' returns only
-	 *			 sent invitations, 'all' returns all. Default: 'all'.
-	 *     @type string $search_terms Term to match against component_name
-	 *           or component_action fields.
-	 *     @type string $order_by Database column to order invitations by.
-	 *     @type string $sort_order Either 'ASC' or 'DESC'.
-	 *     @type string $order_by Field to order results by.
-	 *     @type string $sort_order ASC or DESC.
-	 *     @type int $page Number of the current page of results. Default:
-	 *           false (no pagination - all items).
-	 *     @type int $per_page Number of items to show per page. Default:
-	 *           false (no pagination - all items).
+	 *     @type int|array    $id                ID of invitation being updated.
+	 *                                           Can be an array of IDs.
+	 *     @type int|array    $user_id           ID of user being queried. Can be an
+	 *                                           Can be an array of IDs.
+	 *     @type int|array    $inviter_id        ID of user who created the
+	 *                                           invitation. Can be an array of IDs.
+	 *     @type string|array $invitee_email     Email address of invited users
+	 *			                                 being queried. Can be an array of
+	 *                                           addresses.
+	 *     @type string|array $component_name    Name of the component to filter by.
+	 *                                           Can be an array of component names.
+	 *     @type string|array $component_action  Name of the action to filter by.
+	 *                                           Can be an array of actions.
+	 *     @type int|array    $item_id           ID of associated item.
+	 *                                           Can be an array of multiple item IDs.
+	 *     @type int|array    $secondary_item_id ID of secondary associated item.
+	 *                                           Can be an array of multiple IDs.
+	 *     @type string|array $type              Type of item. An "invite" is sent
+	 *                                           from one user to another.
+	 *                                           A "request" is submitted by a
+	 *                                           user and no inviter is required.
+	 *                                           Default: 'invite'.
+	 *     @type string       $invite_sent       Limit to draft, sent or all
+	 *                                           'draft' limits to unsent invites,
+	 *                                           'sent' returns only sent invites,
+	 *                                           'all' returns all. Default: 'all'.
+	 *     @type bool         $accepted          Limit to accepted or
+	 *                                           not-yet-accepted invitations.
+	 *                                           'accepted' returns accepted invites,
+	 *                                           'pending' returns pending invites,
+	 *                                           'all' returns all. Default: 'pending'
+	 *     @type string       $search_terms      Term to match against component_name
+	 *                                           or component_action fields.
+	 *     @type string       $order_by          Database column to order by.
+	 *     @type string       $sort_order        Either 'ASC' or 'DESC'.
+	 *     @type string       $order_by          Field to order results by.
+	 *     @type string       $sort_order        ASC or DESC.
+	 *     @type int          $page              Number of the current page of results.
+	 *                                           Default: false (no pagination,
+	 *                                           all items).
+	 *     @type int          $per_page          Number of items to show per page.
+	 *                                           Default: false (no pagination,
+	 *                                           all items).
 	 * }
 	 * @return array Located invitations.
 	 */
@@ -722,7 +738,7 @@ class BP_Invitations_Invitation {
 			'secondary_item_id' => false,
 			'type'              => false,
 			'invite_sent'       => 'all',
-			'accepted'          => false,
+			'accepted'          => 'pending',
 			'search_terms'      => '',
 			'order_by'          => false,
 			'sort_order'        => false,
@@ -765,11 +781,7 @@ class BP_Invitations_Invitation {
 		) );
 
 		$sql = "{$select_sql} {$from_sql} {$where_sql} {$order_sql} {$pag_sql}";
-  $towrite = PHP_EOL . '$sql: ' . print_r( $sql, TRUE );
-  $towrite .= PHP_EOL . '$r: ' . print_r( $r, TRUE );
-  $fp = fopen('invite-tracking.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
+
 		return $wpdb->get_results( $sql );
 	}
 
@@ -831,7 +843,9 @@ class BP_Invitations_Invitation {
 
 		do_action( 'bp_invitation_before_update', $where_args, $update_args );
 
-		return self::_update( $update['data'], $where['data'], $update['format'], $where['format'] );
+		$retval = self::_update( $update['data'], $where['data'], $update['format'], $where['format'] );
+
+  		return $retval;
 	}
 
 	/**
@@ -1071,12 +1085,6 @@ class BP_Invitations_Invitation {
 			'accepted' => 1,
 		);
 
-  $towrite = PHP_EOL . '$accepting, $args!: ' . print_r( $args, TRUE );
-  $towrite .= PHP_EOL . '$update_args!: ' . print_r( $update_args, TRUE );
-  $fp = fopen('invite-tracking.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
-
 		return self::update( $update_args, $args );
 	}
 
@@ -1140,6 +1148,20 @@ class BP_Invitations_Invitation {
 						break;
 					default:
 						// Treat any other value as 'all'--no filtering.
+						unset( $filters[ $filter_name ] );
+						break;
+				}
+			} elseif ( 'accepted' == $filter_name ) {
+				// Special case for handling invite_sent values.
+				switch ( $filter_value ) {
+					case 'pending':
+						$filters[ $filter_name ] = 0;
+						break;
+					case 'accepted':
+						$filters[ $filter_name ] = 1;
+						break;
+					default:
+						// Treat any other value as 'pending'--no filtering.
 						unset( $filters[ $filter_name ] );
 						break;
 				}

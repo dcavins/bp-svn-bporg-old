@@ -101,51 +101,68 @@ function bp_invitations_add_invitation( $args = array() ) {
 		return false;
 	}
 
-	/*
-	 * Check for outstanding requests to the same item.
-	 * An invitation + a request = acceptance.
-	 */
-	$request = bp_invitations_get_requests( array(
-		'user_id'           => $r['user_id'],
-		'invitee_email'     => $r['invitee_email'],
-		'component_name'    => $r['component_name'],
-		'component_action'  => $r['component_action'],
-		'item_id'           => $r['item_id'],
-		'secondary_item_id' => $r['secondary_item_id'],
-	) );
+	// Set up the new invitation as a draft.
+	$invitation                    = new BP_Invitations_Invitation;
+	$invitation->user_id           = $r['user_id'];
+	$invitation->inviter_id        = $r['inviter_id'];
+	$invitation->invitee_email     = $r['invitee_email'];
+	$invitation->component_name    = $r['component_name'];
+	$invitation->component_action  = $r['component_action'];
+	$invitation->item_id           = $r['item_id'];
+	$invitation->secondary_item_id = $r['secondary_item_id'];
+	$invitation->type              = $r['type'];
+	$invitation->date_modified     = $r['date_modified'];
+	$invitation->invite_sent       = 0;
+	$invitation->accepted          = 0;
 
-	if ( ! empty( $request ) ) {
-		// Accept the invitation.
-		return bp_invitations_accept_request( array(
-			'user_id'           => $r['user_id'],
-			'invitee_email'     => $r['invitee_email'],
-			'component_name'    => $r['component_name'],
-			'component_action'  => $r['component_action'],
-			'item_id'           => $r['item_id'],
-			'secondary_item_id' => $r['secondary_item_id'],
-		) );
-	} else {
-		// Set up the new invitation
-		$invitation                    = new BP_Invitations_Invitation;
-		$invitation->user_id           = $r['user_id'];
-		$invitation->inviter_id        = $r['inviter_id'];
-		$invitation->invitee_email     = $r['invitee_email'];
-		$invitation->component_name    = $r['component_name'];
-		$invitation->component_action  = $r['component_action'];
-		$invitation->item_id           = $r['item_id'];
-		$invitation->secondary_item_id = $r['secondary_item_id'];
-		$invitation->type              = $r['type'];
-		$invitation->date_modified     = $r['date_modified'];
-		$invitation->invite_sent       = $r['invite_sent'];
-		$invitation->accepted          = $r['accepted'];
+	$save_success = $invitation->save();
 
-  // $towrite = PHP_EOL . '$saving: ' . print_r( $invitation, TRUE );
-  // $fp = fopen('invite-tracking.txt', 'a');
-  // fwrite($fp, $towrite);
-  // fclose($fp);
-		// Save the new invitation.
-		return $invitation->save();
+	// "Send" the invite if necessary.
+	if ( $r['invite_sent'] && $save_success ) {
+		$sent = bp_invitations_send_invitation_by_id( $save_success );
+		if ( ! $sent ) {
+			return false;
+		}
 	}
+
+	return $save_success;
+}
+
+function bp_invitations_send_invitation_by_id( $invitation_id ) {
+	$updated = false;
+
+	$invitation = bp_invitations_get_invitation_by_id( $invitation_id );
+
+	// Different uses may need different actions on sending. Plugins can hook in here to perform their own tasks.
+	do_action( 'bp_invitations_send_invitation_by_id_before_send', $invitation_id, $invitation );
+
+	// Plugins can stop the process here.
+	$allowed = apply_filters( 'bp_invitations_send_invitation_by_id', true, $invitation_id, $invitation );
+
+	if ( $allowed ) {
+		/*
+		 * Before creating a sent invitation, check for outstanding requests to the same item.
+		 * A sent invitation + a request = acceptance.
+		 */
+		$request_args = array(
+			'user_id'           => $invitation->user_id,
+			'invitee_email'     => $invitation->invitee_email,
+			'component_name'    => $invitation->component_name,
+			'component_action'  => $invitation->component_action,
+			'item_id'           => $invitation->item_id,
+			'secondary_item_id' => $invitation->secondary_item_id,
+		);
+		$request = bp_invitations_get_requests( $request_args );
+
+		if ( ! empty( $request ) ) {
+			// Accept the request.
+			return bp_invitations_accept_request( $request_args );
+		}
+
+		$updated = bp_invitations_mark_sent_by_id( $invitation_id );
+	}
+
+	return $updated;
 }
 
 /**
@@ -217,18 +234,13 @@ function bp_invitations_add_request( $args = array() ) {
 		'secondary_item_id' => $r['secondary_item_id'],
 	) );
 
-
-  $towrite = PHP_EOL . '$existing: ' . print_r( $existing, TRUE );
-  $fp = fopen('invite-tracking.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
 	if ( $existing ) {
 		return false;
 	}
 
 	/*
 	 * Check for outstanding invitations to the same item.
-	 * An invitation + a request = acceptance.
+	 * A request + a sent invite = acceptance.
 	 */
 	$invite = bp_invitations_get_invitations( array(
 		'user_id'           => $r['user_id'],
@@ -237,11 +249,9 @@ function bp_invitations_add_request( $args = array() ) {
 		'component_action'  => $r['component_action'],
 		'item_id'           => $r['item_id'],
 		'secondary_item_id' => $r['secondary_item_id'],
+		'invite_sent'       => 'sent'
 	) );
-  $towrite = PHP_EOL . '$invite: ' . print_r( $invite, TRUE );
-  $fp = fopen('invite-tracking.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
+
 	if ( $invite ) {
 		// Accept the invite.
 		return bp_invitations_accept_invitation( array(
@@ -283,7 +293,12 @@ function bp_invitations_add_request( $args = array() ) {
  * @return BP_Invitations_Invitation object
  */
 function bp_invitations_get_invitation_by_id( $id ) {
-	return new BP_Invitations_Invitation( $id );
+	$invitation = wp_cache_get( 'invitation_id_' . $id, 'bp_invitations' );
+	if ( false === $invitation ) {
+		$invitation = new BP_Invitations_Invitation( $id );
+		wp_cache_set( 'invitation_id_' . $id, $invitation, 'bp_invitations' );
+	}
+	return $invitation;
 }
 
 /**
@@ -295,42 +310,49 @@ function bp_invitations_get_invitation_by_id( $id ) {
  *     Associative array of arguments. All arguments but $page and
  *     $per_page can be treated as filter values for get_where_sql()
  *     and get_query_clauses(). All items are optional.
- *     @type int|array    $id ID of invitation being updated. Can be an
- *                        array of IDs.
- *     @type int|array    $user_id ID of user being queried. Can be an
- *                        array of user IDs.
- *     @type int|array    $inviter_id ID of user who created the
- *                        invitation. Can be an array of user IDs.
- *                        Special cases
- *     @type string       $type Type of item. An "invite" is sent from one
- *                        user to another. A "request" is submitted by a
- *                        user and no inviter is required.
- *                        Default: 'invite'.
- *     @type string|array $invitee_email Email address of invited users
- *			              being queried. Can be an array of addresses.
- *     @type string|array $component_name Name of the component to
- *                        filter by. Can be an array of component names.
- *     @type string|array $component_action Name of the action to
- *                        filter by. Can be an array of actions.
- *     @type int|array    $item_id ID of associated item. Can be an array
- *                        of multiple item IDs.
- *     @type int|array    $secondary_item_id ID of secondary associated
- *                        item. Can be an array of multiple IDs.
- *     @type string|array $type Invite or request.
- *     @type string       $invite_sent Limit to draft, sent or all
- *                        invitations. 'draft' returns only unsent
- *                        invitations, 'sent' returns only sent
- *                        invitations, 'all' returns all. Default: 'all'.
- *     @type string       $search_terms Term to match against
- *                        component_name or component_action fields.
- *     @type string       $order_by Database column to order by.
- *     @type string       $sort_order Either 'ASC' or 'DESC'.
- *     @type string       $order_by Field to order results by.
- *     @type string       $sort_order ASC or DESC.
- *     @type int          $page Number of the current page of results.
- *                        Default: false (no pagination - all items).
- *     @type int          $per_page Number of items to show per page.
- *                        Default: false (no pagination - all items).
+ *     @type int|array    $id                ID of invitation being requested.
+ *                                           Can be an array of IDs.
+ *     @type int|array    $user_id           ID of user being queried. Can be an
+ *                                           Can be an array of IDs.
+ *     @type int|array    $inviter_id        ID of user who created the
+ *                                           invitation. Can be an array of IDs.
+ *     @type string|array $invitee_email     Email address of invited users
+ *			                                 being queried. Can be an array of
+ *                                           addresses.
+ *     @type string|array $component_name    Name of the component to filter by.
+ *                                           Can be an array of component names.
+ *     @type string|array $component_action  Name of the action to filter by.
+ *                                           Can be an array of actions.
+ *     @type int|array    $item_id           ID of associated item.
+ *                                           Can be an array of multiple item IDs.
+ *     @type int|array    $secondary_item_id ID of secondary associated item.
+ *                                           Can be an array of multiple IDs.
+ *     @type string|array $type              Type of item. An "invite" is sent
+ *                                           from one user to another.
+ *                                           A "request" is submitted by a
+ *                                           user and no inviter is required.
+ *                                           Default: 'invite'.
+ *     @type string       $invite_sent       Limit to draft, sent or all
+ *                                           'draft' limits to unsent invites,
+ *                                           'sent' returns only sent invites,
+ *                                           'all' returns all. Default: 'all'.
+ *     @type bool         $accepted          Limit to accepted or
+ *                                           not-yet-accepted invitations.
+ *                                           'accepted' returns accepted invites,
+ *                                           'pending' returns pending invites,
+ *                                           'all' returns all. Default: 'pending'
+ *     @type string       $search_terms      Term to match against component_name
+ *                                           or component_action fields.
+ *     @type string       $order_by          Database column to order by.
+ *     @type string       $sort_order        Either 'ASC' or 'DESC'.
+ *     @type string       $order_by          Field to order results by.
+ *     @type string       $sort_order        ASC or DESC.
+ *     @type int          $page              Number of the current page of results.
+ *                                           Default: false (no pagination,
+ *                                           all items).
+ *     @type int          $per_page          Number of items to show per page.
+ *                                           Default: false (no pagination,
+ *                                           all items).
  * }
  * @return array Located invitations.
  */
@@ -339,7 +361,7 @@ function bp_invitations_get_invitations( $args ) {
 }
 
 /**
- * Get invitations, based on provided filter parameters. This is the
+ * Get requests, based on provided filter parameters. This is the
  * Swiss Army Knife function. When possible, use the filter_invitations
  * functions that take advantage of caching.
  *
@@ -405,6 +427,9 @@ function bp_invitations_get_requests( $args ) {
  *                                     'all' returns all. Default: 'sent'.
  *     @type bool   $accepted          Limit to accepted or not-yet-accepted
  *                                     invitations.
+ *                                     'accepted' returns only accepted invites,
+ *                                     'pending' returns only pending invites,
+ *                                     'all' returns all. Default: 'pending'
  *     @type string $order             Order of results. 'ASC' or 'DESC'.
  *     @type int    $page              Which page of results to return.
  *     @type string $per_page          How many invites to include on each page
@@ -419,7 +444,7 @@ function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email 
 		'secondary_item_id' => false,
  		'type'              => 'invite',
 		'invite_sent'       => 'sent',
-		'accepted'          => false,
+		'accepted'          => 'pending',
 		'orderby'           => 'id',
 		'order'             => 'ASC',
 		'page'              => false,
@@ -429,15 +454,16 @@ function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email 
 
 	// Two cases: we're searching by email address or user ID.
 	if ( ! empty( $invitee_email ) && is_email( $invitee_email ) ) {
-		// Get invitations out of the cache, or query if necessary
+		// Get invitations out of the cache, or query for all if necessary
 		$encoded_email = rawurlencode( $invitee_email );
 		$invitations = wp_cache_get( 'all_to_user_' . $encoded_email, 'bp_invitations' );
 		if ( false === $invitations ) {
-			$args = array(
+			$all_args = array(
 				'invitee_email' => $invitee_email,
-				'invite_sent' => 'all'
+				'invite_sent' => 'all',
+				'accepted'    => 'all'
 			);
-			$invitations = bp_invitations_get_invitations( $args );
+			$invitations = bp_invitations_get_invitations( $all_args );
 			wp_cache_set( 'all_to_user_' . $encoded_email, $invitations, 'bp_invitations' );
 		}
 	} else {
@@ -445,25 +471,21 @@ function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email 
 		if ( empty( $user_id ) ) {
 			$user_id = ( bp_displayed_user_id() ) ? bp_displayed_user_id() : bp_loggedin_user_id();
 		}
-		// Get invitations out of the cache, or query if necessary
+		// Get invitations out of the cache, or query for all if necessary
 		$invitations = wp_cache_get( 'all_to_user_' . $user_id, 'bp_invitations' );
 		if ( false === $invitations ) {
-			$args = array(
-				'user_id' => $user_id,
-				'invite_sent' => 'all'
+			$all_args = array(
+				'user_id'     => $user_id,
+				'invite_sent' => 'all',
+				'accepted'    => 'all'
 			);
-			$invitations = bp_invitations_get_invitations( $args );
+			$invitations = bp_invitations_get_invitations( $all_args );
 			wp_cache_set( 'all_to_user_' . $user_id, $invitations, 'bp_invitations' );
 		}
 	}
 
 	// Pass the list of invitations to the filter.
 	$invitations = BP_Invitations_Invitation::filter_invitations_by_arguments( $invitations, $r );
-
-  // $towrite = PHP_EOL . '$r: ' . print_r( $r, TRUE );
-  // $fp = fopen('invite-tracking.txt', 'a');
-  // fwrite($fp, $towrite);
-  // fclose($fp);
 
 	if ( 'request' == $r['type'] ) {
 		$filter_hook_name = 'bp_get_user_requests';
@@ -485,7 +507,7 @@ function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email 
 function bp_get_user_requests( $user_id = 0, $args = array() ){
 	// Requests are a type of invitation, so we can use our main function.
 	$args['type']        = 'request';
-	// Passing 'all' on the invite_sent will ensure that all statuses are returned.
+	// Passing 'all' ensures that all statuses are returned.
 	$args['invite_sent'] = 'all';
 
 	// Filter the results on the `bp_get_user_requests` hook.
@@ -589,7 +611,7 @@ function bp_get_invitations_from_user( $inviter_id = 0, $args = array() ) {
 function bp_invitations_accept_invitation( $args = array() ) {
 	/*
 	 * Some basic info is required to accept an invitation,
-	 * because we'll need to delete all similar invitations and requests.
+	 * because we'll need to mark all similar invitations and requests.
 	 * The following, except the optional 'secondary_item_id', are required.
 	 */
 	$r = bp_parse_args( $args, array(
@@ -600,25 +622,15 @@ function bp_invitations_accept_invitation( $args = array() ) {
 		'item_id'           => null,
 		'secondary_item_id' => null,
 	), 'bp_get_invitations_from_user' );
-  $towrite = PHP_EOL . 'bp_invitations_accept_invitation, start!!: ' . print_r( $r, TRUE );
-  $fp = fopen('invite-tracking.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
+
 	if ( ! ( ( $r['user_id'] || $r['invitee_email'] ) && $r['component_name'] && $r['component_action'] && $r['item_id'] ) ) {
 		return false;
 	}
-  $towrite = PHP_EOL . 'bp_invitations_accept_invitation, $args!: ' . print_r( $args, TRUE );
-  $fp = fopen('invite-tracking.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
+
 	//@TODO: access check
 	$success = false;
 	if ( apply_filters( 'bp_invitations_accept_invitation', true, $args ) ) {
-		// Delete all related invitations & requests to this item for this user.
-  $towrite = PHP_EOL . 'about to bp_invitations_mark_accepted, $args!: ' . print_r( '', TRUE );
-  $fp = fopen('invite-tracking.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
+		// Mark invitations & requests to this item for this user.
 		$success = bp_invitations_mark_accepted( $r );
 	}
 	return $success;

@@ -164,20 +164,10 @@ function bp_version_bump() {
  */
 function bp_setup_updater() {
 
-  $towrite = PHP_EOL . 'starting bp_setup_updater';
-  $fp = fopen('bp_update.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
-
 	// Are we running an outdated version of BuddyPress?
 	if ( ! bp_is_update() ) {
 		return;
 	}
-
-  $towrite = PHP_EOL . 'need to update';
-  $fp = fopen('bp_update.txt', 'a');
-  fwrite($fp, $towrite);
-  fclose($fp);
 
 	bp_version_updater();
 }
