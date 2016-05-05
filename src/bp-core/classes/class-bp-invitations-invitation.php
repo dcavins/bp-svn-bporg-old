@@ -417,20 +417,25 @@ class BP_Invitations_Invitation {
 		}
 
 		// type
-		if ( $args['type'] ) {
-			if ( ! is_array( $args['type'] ) ) {
-				$types = explode( ',', $args['type'] );
-			} else {
-				$types = $args['type'];
-			}
+		if ( ! empty( $args['type'] ) && 'all' !== $args['type'] ) {
+			// if ( ! is_array( $args['type'] ) ) {
+			// 	$types = explode( ',', $args['type'] );
+			// } else {
+			// 	$types = $args['type'];
+			// }
 
-			$type_clean = array();
-			foreach ( $types as $ty ) {
-				$type_clean[] = $wpdb->prepare( '%s', $ty );
-			}
+			// $type_clean = array();
+			// foreach ( $types as $ty ) {
+			// 	$type_clean[] = $wpdb->prepare( '%s', $ty );
+			// }
 
-			$types_in = implode( ',', $type_clean );
-			$where_conditions['type'] = "type IN ({$types_in})";
+			// $types_in = implode( ',', $type_clean );
+			// $where_conditions['type'] = "type IN ({$types_in})";
+
+			if ( 'invite' == $args['type'] || 'request' == $args['type'] ) {
+				$type_clean = $wpdb->prepare( '%s', $args['type'] );
+				$where_conditions['type'] = "type = {$type_clean}";
+			}
 		}
 
 		// invite_sent
@@ -698,7 +703,7 @@ class BP_Invitations_Invitation {
 	 *                                           from one user to another.
 	 *                                           A "request" is submitted by a
 	 *                                           user and no inviter is required.
-	 *                                           Default: 'invite'.
+	 *                                           'all' returns all. Default: 'all'.
 	 *     @type string       $invite_sent       Limit to draft, sent or all
 	 *                                           'draft' limits to unsent invites,
 	 *                                           'sent' returns only sent invites,
@@ -736,7 +741,7 @@ class BP_Invitations_Invitation {
 			'component_action'  => false,
 			'item_id'           => false,
 			'secondary_item_id' => false,
-			'type'              => false,
+			'type'              => 'all',
 			'invite_sent'       => 'all',
 			'accepted'          => 'pending',
 			'search_terms'      => '',
@@ -1118,7 +1123,7 @@ class BP_Invitations_Invitation {
 	 *
 	 * @return array Filtered list of invitations
 	 */
-	public static function filter_invitations_by_arguments( $invitations, $r ) {
+	public static function filter_invitations_by_arguments( $invitations, $args ) {
 	    // Normalize group data.
 		foreach ( $invitations as &$invitation ) {
 			// Integer values.
@@ -1129,6 +1134,23 @@ class BP_Invitations_Invitation {
 			$invitation->invite_sent = (bool) $invitation->invite_sent;
 			$invitation->accepted    = (bool) $invitation->accepted;
 		}
+		// Normalize arguments.
+		$r = wp_parse_args( $args, array(
+			'user_id'           => false,
+			'inviter_id'        => false,
+			'invitee_email'     => false,
+			'component_name'    => false,
+			'component_action'  => false,
+			'item_id'           => false,
+			'secondary_item_id' => false,
+			'type'              => false,
+			'invite_sent'       => false,
+			'accepted'          => false,
+			'order_by'          => false,
+			'sort_order'        => 'ASC',
+			'page'              => false,
+			'per_page'          => false,
+		) );
 
 		// Filter the results
 		// Assemble filter array for use in `wp_list_filter()`.
@@ -1178,16 +1200,13 @@ class BP_Invitations_Invitation {
 		}
 
 		// Adjust the sort direction of the results.
-		if ( 'DESC' === strtoupper( $r['order'] ) ) {
+		if ( 'DESC' === strtoupper( $r['sort_order'] ) ) {
 			// `true` to preserve keys.
 			$invitations = array_reverse( $invitations, true );
 		}
 
 		// Paginate the results.
 		if ( $r['per_page'] ) {
-			if ( ! $r['page'] ) {
-				$r['page'] = 1;
-			}
 			$start       = ( $r['page'] - 1 ) * ( $r['per_page'] );
 			$invitations = array_slice( $invitations, $start, $r['per_page'] );
 		}

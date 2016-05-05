@@ -257,15 +257,38 @@ function groups_notification_group_invites( &$group, &$member, $inviter_user_id 
 		return;
 	}
 
-	// @todo $inviter_ud may be used for caching, test without it
-	$inviter_ud      = bp_core_get_core_userdata( $inviter_user_id );
 	$invited_user_id = $member->user_id;
+
+	groups_notification_single_group_invite( $group->id, $invited_user_id, $inviter_user_id );
+}
+
+/**
+ * Notify a member they have been invited to a group.
+ *
+ * @since 2.7.0
+ *
+ * @param BP_Groups_Group  $group      Group object.
+ * @param int              $user_id    ID of invitee.
+ * @param int              $inviter_id ID of the user who sent the invite.
+ * @param bool             $resend     Whether to send more than one email.
+ */
+function groups_notification_single_group_invite( $group_id, $user_id, $inviter_id, $resend = false ) {
+	// Get invitation.
+	$invite = groups_get_single_invite( $user_id, $group_id, $inviter_id );
+
+	// Bail if no invite, or if member has already been notified.
+	if ( ! $invite || ( ! empty( $invite->invite_sent ) && ! $resend ) ) {
+		return false;
+	}
+
+	// Get group object.
+	$group = groups_get_group( array( 'group_id' => $group_id ) );
 
 	// Trigger a BuddyPress Notification.
 	if ( bp_is_active( 'notifications' ) ) {
 		bp_notifications_add_notification( array(
-			'user_id'          => $invited_user_id,
-			'item_id'          => $group->id,
+			'user_id'          => $user_id,
+			'item_id'          => $group_id,
 			'component_name'   => buddypress()->groups->id,
 			'component_action' => 'group_invite',
 		) );
@@ -279,13 +302,14 @@ function groups_notification_group_invites( &$group, &$member, $inviter_user_id 
 	$invited_link = bp_core_get_user_domain( $invited_user_id ) . bp_get_groups_slug();
 	$args         = array(
 		'tokens' => array(
-			'group'        => $group,
-			'group.url'    => bp_get_group_permalink( $group ),
-			'group.name'   => $group->name,
-			'inviter.name' => bp_core_get_userlink( $inviter_user_id, true, false, true ),
-			'inviter.url'  => bp_core_get_user_domain( $inviter_user_id ),
-			'inviter.id'   => $inviter_user_id,
-			'invites.url'  => esc_url( $invited_link . '/invites/' ),
+			'group'          => $group,
+			'group.url'      => bp_get_group_permalink( $group ),
+			'group.name'     => $group->name,
+			'inviter.name'   => bp_core_get_userlink( $inviter_user_id, true, false, true ),
+			'inviter.url'    => bp_core_get_user_domain( $inviter_user_id ),
+			'inviter.id'     => $inviter_user_id,
+			'invites.url'    => esc_url( $invited_link . '/invites/' ),
+			'invite.content' => $invite->content,
 		),
 	);
 	bp_send_email( 'groups-invitation', (int) $invited_user_id, $args );

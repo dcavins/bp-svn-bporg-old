@@ -111,6 +111,7 @@ function bp_invitations_add_invitation( $args = array() ) {
 	$invitation->item_id           = $r['item_id'];
 	$invitation->secondary_item_id = $r['secondary_item_id'];
 	$invitation->type              = $r['type'];
+	$invitation->content           = $r['content'];
 	$invitation->date_modified     = $r['date_modified'];
 	$invitation->invite_sent       = 0;
 	$invitation->accepted          = 0;
@@ -327,11 +328,10 @@ function bp_invitations_get_invitation_by_id( $id ) {
  *                                           Can be an array of multiple item IDs.
  *     @type int|array    $secondary_item_id ID of secondary associated item.
  *                                           Can be an array of multiple IDs.
- *     @type string|array $type              Type of item. An "invite" is sent
- *                                           from one user to another.
- *                                           A "request" is submitted by a
- *                                           user and no inviter is required.
- *                                           Default: 'invite'.
+ *     @type string       $invite_sent       Limit to draft, sent or all
+ *                                           'draft' limits to unsent invites,
+ *                                           'sent' returns only sent invites,
+ *                                           'all' returns all. Default: 'all'.
  *     @type string       $invite_sent       Limit to draft, sent or all
  *                                           'draft' limits to unsent invites,
  *                                           'sent' returns only sent invites,
@@ -430,7 +430,7 @@ function bp_invitations_get_requests( $args ) {
  *                                     'accepted' returns only accepted invites,
  *                                     'pending' returns only pending invites,
  *                                     'all' returns all. Default: 'pending'
- *     @type string $order             Order of results. 'ASC' or 'DESC'.
+ *     @type string $sort_order        Order of results. 'ASC' or 'DESC'.
  *     @type int    $page              Which page of results to return.
  *     @type string $per_page          How many invites to include on each page
  *                                     of results.
@@ -438,6 +438,7 @@ function bp_invitations_get_requests( $args ) {
  */
 function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email = false ) {
 	$r = bp_parse_args( $args, array(
+		'inviter_id'        => 0,
 		'component_name'    => '',
 		'component_action'  => '',
 		'item_id'           => false,
@@ -446,7 +447,7 @@ function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email 
 		'invite_sent'       => 'sent',
 		'accepted'          => 'pending',
 		'orderby'           => 'id',
-		'order'             => 'ASC',
+		'sort_order'        => 'ASC',
 		'page'              => false,
 		'per_page'          => false
 	), 'bp_get_user_invitations' );
@@ -552,11 +553,11 @@ function bp_get_invitations_from_user( $inviter_id = 0, $args = array() ) {
 		'component_action'  => '',
 		'item_id'           => null,
 		'secondary_item_id' => null,
- 		'type'              => null,
+ 		'type'              => 'invite',
 		'invite_sent'       => 'all',
 		'accepted'          => false,
 		'orderby'           => 'id',
-		'order'             => 'ASC',
+		'sort_order'        => 'ASC',
 		'page'              => false,
 		'per_page'          => false
 	), 'bp_get_invitations_from_user' );
@@ -842,6 +843,9 @@ function bp_invitations_delete_invitation_by_id( $id ) {
  */
 function bp_invitations_delete_invitations( $args ) {
 	//@TODO: access check
+	if ( empty( $args['type'] ) ) {
+		$args['type'] = 'invite';
+	}
 	return BP_Invitations_Invitation::delete( $args );
 }
 
