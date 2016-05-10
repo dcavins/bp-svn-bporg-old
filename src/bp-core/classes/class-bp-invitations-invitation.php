@@ -1209,8 +1209,8 @@ class BP_Invitations_Invitation {
 		}
 
 		// Sort the results on a column name.
-		if ( in_array( $r['orderby'], array( 'component_name', 'component_action', 'item_id', 'secondary_item_id' ) ) ) {
-			$invitations = bp_sort_by_key( $invitations, $r['orderby'] );
+		if ( in_array( $r['order_by'], array( 'component_name', 'component_action', 'item_id', 'secondary_item_id' ) ) ) {
+			$invitations = bp_sort_by_key( $invitations, $r['order_by'] );
 		}
 
 		// Adjust the sort direction of the results.

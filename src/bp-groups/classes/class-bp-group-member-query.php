@@ -344,6 +344,12 @@ class BP_Group_Member_Query extends BP_User_Query {
 		$bp     = buddypress();
 		$extras = $wpdb->get_results( $wpdb->prepare( "SELECT id, user_id, date_modified, is_admin, is_mod, comments, user_title, invite_sent, is_confirmed, inviter_id, is_banned FROM {$bp->groups->table_name_members} WHERE user_id IN ({$user_ids_sql}) AND group_id = %d", $this->query_vars['group_id'] ) );
 
+		$pending_memberships = groups_get_invites_for_group_by_data( $this->query_vars['group_id'], array( 'type' => 'all' ) );
+		$invites = $pending_memberships['invites'];
+
+		// Keep a running list of whose data we're trying to complete.
+		$user_ids = explode( ',', $user_ids_sql );
+
 		foreach ( (array) $extras as $extra ) {
 			if ( isset( $this->results[ $extra->user_id ] ) ) {
 				// The user_id is provided for backward compatibility.
@@ -354,10 +360,53 @@ class BP_Group_Member_Query extends BP_User_Query {
 				$this->results[ $extra->user_id ]->date_modified = $extra->date_modified;
 				$this->results[ $extra->user_id ]->user_title    = $extra->user_title;
 				$this->results[ $extra->user_id ]->comments      = $extra->comments;
-				$this->results[ $extra->user_id ]->invite_sent   = (int) $extra->invite_sent;
-				$this->results[ $extra->user_id ]->inviter_id    = (int) $extra->inviter_id;
 				$this->results[ $extra->user_id ]->is_confirmed  = (int) $extra->is_confirmed;
 				$this->results[ $extra->user_id ]->membership_id = (int) $extra->id;
+
+				// This information is stored in the invitations table.
+				foreach ( $invites as $invite ) {
+					if ( $invite->user_id == $extra->user_id ) {
+						$this->results[ $extra->user_id ]->invite_sent   = (int) $invite->invite_sent;
+						$this->results[ $extra->user_id ]->inviter_id    = (int) $invite->inviter_id;
+						break;
+					}
+				}
+
+				// We no longer need to complete this user's info.
+				$user_ids = array_diff( $user_ids, array( $extra->user_id ) );
+			}
+		}
+
+		// Now we build the results for the pending members that have no entry in the groups table.
+		if ( $user_ids ) {
+			foreach ( $invites as $invite ) {
+
+				if ( ! in_array( $invite->user_id, $user_ids ) ) {
+					continue;
+				}
+
+				// Skip unsent invites.
+				if ( 'invite' == $invite->type && ! $invite->invite_sent ) {
+					continue;
+				}
+
+				$this->results[ $invite->user_id ]->user_id       = $invite->user_id;
+				$this->results[ $invite->user_id ]->is_admin      = 0;
+				$this->results[ $invite->user_id ]->is_mod        = 0;
+				$this->results[ $invite->user_id ]->is_banned     = 0;
+				$this->results[ $invite->user_id ]->date_modified = $invite->date_modified;
+				$this->results[ $invite->user_id ]->user_title    = '';
+				$this->results[ $invite->user_id ]->comments      = $invite->content;
+				$this->results[ $invite->user_id ]->is_confirmed  = 0;
+				$this->results[ $invite->user_id ]->membership_id = null;
+				$this->results[ $invite->user_id ]->invitation_id = $invite->id;
+
+				// This information is stored in the invitations table.
+				$this->results[ $invite->user_id ]->invite_sent   = (int) $invite->invite_sent;
+				$this->results[ $invite->user_id ]->inviter_id    = $invite->inviter_id;
+
+				// We no longer need to complete this user's info.
+				$user_ids = array_diff( $user_ids, array( $invite->user_id ) );
 			}
 		}
 

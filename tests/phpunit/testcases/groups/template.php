@@ -688,7 +688,7 @@ class BP_Tests_Groups_Template extends BP_UnitTestCase {
 		// Check each expected value. If there are more in the results,
 		// that's OK
 		foreach ( get_object_vars( $expected ) as $k => $v ) {
-			$this->assertEquals( $v, $requests_template->requests[0]->{$k} );
+			$this->assertEquals( $v, current( $requests_template->requests )->{$k} );
 		}
 	}
 

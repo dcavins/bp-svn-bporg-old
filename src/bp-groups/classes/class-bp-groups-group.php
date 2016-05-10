@@ -1498,6 +1498,8 @@ class BP_Groups_Group {
 			$requested_groups  = groups_get_membership_requested_group_ids();
 		} else {
 			$user_status_results = array();
+			$invited_to_groups   = array();
+			$requested_groups    = array();
 		}
 
 		// Reindex.
