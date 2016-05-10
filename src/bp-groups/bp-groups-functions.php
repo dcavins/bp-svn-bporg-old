@@ -1079,6 +1079,24 @@ function groups_get_invite_count_for_user( $user_id = 0 ) {
 }
 
 /**
+ * Get an array of group IDs to which a user is invited.
+ *
+ * @since 2.7.0
+ *
+ * @param int $user_id The user ID.
+ *
+ * @return array Array of group IDs.
+ */
+function groups_get_invited_to_group_ids( $user_id = 0 ) {
+
+	if ( empty( $user_id ) ) {
+		$user_id = bp_loggedin_user_id();
+	}
+
+	return BP_Groups_Member::get_invited_to_group_ids( $user_id );
+}
+
+/**
  * Invite a user to a group.
  *
  * @since 1.0.0
@@ -1390,6 +1408,24 @@ function groups_get_invites_for_group( $user_id, $group_id ) {
 }
 
 /**
+ * Get invitations to a given group filtered by arguments. Cached.
+ *
+ * @since 2.7.0
+ *
+ * @param int   $group_id ID of the group.
+ * @param array $args     Invitation arguments.
+ *                        See `bp_invitations_get_invitations()` for list.
+ *
+ * @return array {
+ *                array $invites     Matching invitation objects.
+ *                int   $total_count Total number of invites to group.
+ *                }                   user but have not yet accepted.
+ */
+function groups_get_invites_for_group_by_data( $group_id, $args = array() ) {
+	return BP_Groups_Group::get_invitations_by_data( $group_id, $args );
+}
+
+/**
  * Check to see whether a user has already been invited to a group.
  *
  * By default, the function checks for invitations that have been sent.
@@ -1634,23 +1670,22 @@ function groups_send_membership_request( $requesting_user_id, $group_id ) {
 		groups_accept_invite( $requesting_user_id, $group_id );
 		return true;
 	}
+	$bp = buddypress();
 
-	$requesting_user                = new BP_Groups_Member;
-	$requesting_user->group_id      = $group_id;
-	$requesting_user->user_id       = $requesting_user_id;
-	$requesting_user->inviter_id    = 0;
-	$requesting_user->is_admin      = 0;
-	$requesting_user->user_title    = '';
-	$requesting_user->date_modified = bp_core_current_time();
-	$requesting_user->is_confirmed  = 0;
-	$requesting_user->comments      = isset( $_POST['group-request-membership-comments'] ) ? $_POST['group-request-membership-comments'] : '';
+	$request_args = array(
+		'user_id'           => $requesting_user_id,
+		'component_name'   => $bp->groups->id,
+		'component_action' => $bp->groups->id . '_invite',
+		'item_id'           => $group_id,
+		'content'           => isset( $_POST['group-request-membership-comments'] ) ? $_POST['group-request-membership-comments'] : '',
+	);
 
-	if ( $requesting_user->save() ) {
+	if ( $request_id = bp_invitations_add_request( $request_args ) ) {
 		$admins = groups_get_group_admins( $group_id );
 
 		// Saved okay, now send the email notification.
 		for ( $i = 0, $count = count( $admins ); $i < $count; ++$i )
-			groups_notification_new_membership_request( $requesting_user_id, $admins[$i]->user_id, $group_id, $requesting_user->id );
+			groups_notification_new_membership_request( $requesting_user_id, $admins[$i]->user_id, $group_id, $request_id );
 
 		/**
 		 * Fires after the creation of a new membership request.
@@ -1662,7 +1697,7 @@ function groups_send_membership_request( $requesting_user_id, $group_id ) {
 		 * @param int   $group_id            ID of the group being requested to.
 		 * @param int   $requesting_user->id ID of the user requesting membership.
 		 */
-		do_action( 'groups_membership_requested', $requesting_user_id, $admins, $group_id, $requesting_user->id );
+		do_action( 'groups_membership_requested', $requesting_user_id, $admins, $group_id, $request_id );
 
 		return true;
 	}
@@ -1674,34 +1709,44 @@ function groups_send_membership_request( $requesting_user_id, $group_id ) {
  * Accept a pending group membership request.
  *
  * @since 1.0.0
+ * @since 2.7.0 Deprecated $membership_id argument.
  *
- * @param int $membership_id ID of the membership object.
- * @param int $user_id       Optional. ID of the user who requested membership.
+ * @param int $membership_id Deprecated 2.7.0. ID of the membership object.
+ * @param int $user_id       ID of the user who requested membership.
  *                           Provide this value along with $group_id to override
  *                           $membership_id.
- * @param int $group_id      Optional. ID of the group to which membership is being
+ * @param int $group_id      ID of the group to which membership is being
  *                           requested. Provide this value along with $user_id to
  *                           override $membership_id.
  * @return bool True on success, false on failure.
  */
 function groups_accept_membership_request( $membership_id, $user_id = 0, $group_id = 0 ) {
 
-	if ( !empty( $user_id ) && !empty( $group_id ) ) {
-		$membership = new BP_Groups_Member( $user_id, $group_id );
-	} else {
-		$membership = new BP_Groups_Member( false, false, $membership_id );
+	if ( ! empty( $membership_id ) ){
+		_deprecated_argument( __METHOD__, '2.0.0', sprintf( __( 'Argument `membership_id` passed to %1$s  is deprecated. See the inline documentation at %2$s for more details.', 'buddypress' ), __METHOD__, __FILE__ ) );
 	}
 
-	$membership->accept_request();
-
-	if ( !$membership->save() ) {
+	if ( ! $user_id || ! $group_id ) {
 		return false;
 	}
 
-	// Check if the user has an outstanding invite, if so delete it.
-	if ( groups_check_user_has_invite( $membership->user_id, $membership->group_id ) ) {
-		groups_delete_invite( $membership->user_id, $membership->group_id );
+	$membership = new BP_Groups_Member( $user_id, $group_id );
+
+	$membership->accept_request();
+
+	if ( ! $membership->save() ) {
+		return false;
 	}
+
+	// Mark the request & any invitations as accepted.
+	$bp = buddypress();
+	$request_args = array(
+		'user_id'          => $user_id,
+		'component_name'   => $bp->groups->id,
+		'component_action' => $bp->groups->id . '_invite',
+		'item_id'          => $group_id,
+	);
+	bp_invitations_accept_request( $request_args );
 
 	/**
 	 * Fires after a group membership request has been accepted.
@@ -1721,8 +1766,9 @@ function groups_accept_membership_request( $membership_id, $user_id = 0, $group_
  * Reject a pending group membership request.
  *
  * @since 1.0.0
+ * @since 2.7.0 Deprecated $membership_id argument.
  *
- * @param int $membership_id ID of the membership object.
+ * @param int $membership_id Deprecated 2.7.0. ID of the membership object.
  * @param int $user_id       Optional. ID of the user who requested membership.
  *                           Provide this value along with $group_id to override
  *                           $membership_id.
@@ -1732,7 +1778,11 @@ function groups_accept_membership_request( $membership_id, $user_id = 0, $group_
  * @return bool True on success, false on failure.
  */
 function groups_reject_membership_request( $membership_id, $user_id = 0, $group_id = 0 ) {
-	if ( !$membership = groups_delete_membership_request( $membership_id, $user_id, $group_id ) ) {
+	if ( ! empty( $membership_id ) ){
+		_deprecated_argument( __METHOD__, '2.0.0', sprintf( __( 'Argument `membership_id` passed to %1$s  is deprecated. See the inline documentation at %2$s for more details.', 'buddypress' ), __METHOD__, __FILE__ ) );
+	}
+
+	if ( ! $membership = groups_delete_membership_request( false, $user_id, $group_id ) ) {
 		return false;
 	}
 
@@ -1745,7 +1795,7 @@ function groups_reject_membership_request( $membership_id, $user_id = 0, $group_
 	 * @param int  $group_id ID of the group that was rejected membership to.
 	 * @param bool $value    If membership was accepted.
 	 */
-	do_action( 'groups_membership_rejected', $membership->user_id, $membership->group_id, false );
+	do_action( 'groups_membership_rejected', $user_id, $group_id, false );
 
 	return true;
 }
@@ -1754,26 +1804,27 @@ function groups_reject_membership_request( $membership_id, $user_id = 0, $group_
  * Delete a pending group membership request.
  *
  * @since 1.2.0
+ * @since 2.7.0 Deprecated $membership_id argument.
  *
- * @param int $membership_id ID of the membership object.
- * @param int $user_id       Optional. ID of the user who requested membership.
+ * @param int $membership_id Deprecated 2.7.0. ID of the membership object.
+ * @param int $user_id       ID of the user who requested membership.
  *                           Provide this value along with $group_id to override
  *                           $membership_id.
- * @param int $group_id      Optional. ID of the group to which membership is being
+ * @param int $group_id      ID of the group to which membership is being
  *                           requested. Provide this value along with $user_id to
  *                           override $membership_id.
  * @return bool True on success, false on failure.
  */
 function groups_delete_membership_request( $membership_id, $user_id = 0, $group_id = 0 ) {
-	if ( !empty( $user_id ) && !empty( $group_id ) )
-		$membership = new BP_Groups_Member( $user_id, $group_id );
-	else
-		$membership = new BP_Groups_Member( false, false, $membership_id );
+	if ( ! empty( $membership_id ) ){
+		_deprecated_argument( __METHOD__, '2.0.0', sprintf( __( 'Argument `membership_id` passed to %1$s  is deprecated. See the inline documentation at %2$s for more details.', 'buddypress' ), __METHOD__, __FILE__ ) );
+	}
 
-	if ( ! BP_Groups_Member::delete_request( $membership->user_id, $membership->group_id ) )
+	if ( ! BP_Groups_Member::delete_request( $user_id, $group_id ) ) {
 		return false;
+	}
 
-	return $membership;
+	return true;
 }
 
 /**
@@ -1787,6 +1838,23 @@ function groups_delete_membership_request( $membership_id, $user_id = 0, $group_
  */
 function groups_check_for_membership_request( $user_id, $group_id ) {
 	return BP_Groups_Member::check_for_membership_request( $user_id, $group_id );
+}
+
+/**
+ * Get an array of group IDs to which a user has requested membership.
+ *
+ * @since 2.7.0
+ *
+ * @param int $user_id The user ID.
+ *
+ * @return array Array of group IDs.
+ */
+function groups_get_membership_requested_group_ids( $user_id = 0 ) {
+	if ( empty( $user_id ) ) {
+		$user_id = bp_loggedin_user_id();
+	}
+
+	return BP_Groups_Member::get_membership_requested_group_ids( $user_id );
 }
 
 /**

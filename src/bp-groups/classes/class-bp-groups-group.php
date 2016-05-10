@@ -488,6 +488,59 @@ class BP_Groups_Group {
 	}
 
 	/**
+	 * Get invitations to a given group filtered by arguments. Cached.
+	 *
+	 * @since 2.7.0
+	 *
+	 * @param int   $group_id ID of the group.
+	 * @param array $args     Invitation arguments.
+	 *                        See `bp_invitations_get_invitations()` for list.
+	 *
+	 * @return array {
+	 *                array $invites     Matching invitation objects.
+	 *                int   $total_count Total number of invites to group.
+	 *                }
+	 */
+	public static function get_invitations_by_data( $group_id, $args ) {
+
+		$bp = buddypress();
+
+		$r = bp_parse_args( $args, array(
+			'inviter_id'        => false,
+			'secondary_item_id' => false,
+			'type'              => 'invite',
+			'invite_sent'       => 'all',
+			'accepted'          => 'pending',
+			'orderby'           => 'id',
+			'sort_order'        => 'DESC',
+			'page'              => false,
+			'per_page'          => false
+		), 'bp_get_group_invitations' );
+
+		$invites = wp_cache_get( 'bp_membership_invitations_for_group_' . $group_id, 'bp' );
+
+		if ( false === $invites ) {
+			$all_args = array(
+				'component_name'    => $bp->groups->id,
+				'component_action'  => $bp->groups->id . '_invite',
+				'item_id'           => $group_id,
+				'type'              => 'all'
+			);
+			$invites = bp_invitations_get_invitations( $all_args );
+			wp_cache_set( 'bp_membership_invitations_for_group_' . $group_id, $invites, 'bp' );
+		}
+
+		$type_args = array( 'type' => $r['type'] );
+		$invites_by_type = BP_Invitations_Invitation::filter_invitations_by_arguments( $invites, $type_args );
+		$total_count = count( $invites_by_type );
+
+		// Filter the results.
+		$invites = BP_Invitations_Invitation::filter_invitations_by_arguments( $invites, $r );
+
+		return array( 'invites' => $invites, 'total' => $total_count );
+	}
+
+	/**
 	 * Get a list of a user's groups, filtered by a search string.
 	 *
 	 * @since 1.6.0
@@ -670,33 +723,43 @@ class BP_Groups_Group {
 	public static function get_membership_requests( $group_id, $limit = null, $page = null ) {
 		$bp = buddypress();
 
-		$requests = wp_cache_get( 'bp_membership_requests_for_group_' . $group_id, 'bp' );
-
-		if ( false === $requests ) {
-			$args = array(
-				'component_name'    => $bp->groups->id,
-				'component_action'  => $bp->groups->id . '_invite',
-				'item_id'           => $group_id,
-			);
-			$requests = bp_invitations_get_requests( $args );
-			wp_cache_set( 'bp_membership_requests_for_group_' . $group_id, $requests, 'bp' );
+		$args = array( 'type' => 'request' );
+		if ( $limit ) {
+			$args['per_page'] = $limit;
+		}
+		if ( $page ) {
+			$args['page'] = $page;
 		}
 
-		$total_count = count( $requests );
+		return self::get_invitations_by_data( $group_id, $args );
 
-		// Pagination filtering, if necessary
-		if ( $limit || $page ) {
-			$filter = array();
-			if ( $limit ) {
-				$filter['per_page'] = $limit;
-			}
-			if ( $page ) {
-				$filter['page'] = $page;
-			}
-			$requests = BP_Invitations_Invitation::filter_invitations_by_arguments( $requests, $filter );
-		}
+		// $requests = wp_cache_get( 'bp_membership_requests_for_group_' . $group_id, 'bp' );
 
-		return array( 'requests' => $requests, 'total' => $total_count );
+		// if ( false === $requests ) {
+		// 	$args = array(
+		// 		'component_name'    => $bp->groups->id,
+		// 		'component_action'  => $bp->groups->id . '_invite',
+		// 		'item_id'           => $group_id,
+		// 	);
+		// 	$requests = bp_invitations_get_requests( $args );
+		// 	wp_cache_set( 'bp_membership_requests_for_group_' . $group_id, $requests, 'bp' );
+		// }
+
+		// $total_count = count( $requests );
+
+		// // Pagination filtering, if necessary
+		// if ( $limit || $page ) {
+		// 	$filter = array();
+		// 	if ( $limit ) {
+		// 		$filter['per_page'] = $limit;
+		// 	}
+		// 	if ( $page ) {
+		// 		$filter['page'] = $page;
+		// 	}
+		// 	$requests = BP_Invitations_Invitation::filter_invitations_by_arguments( $requests, $filter );
+		// }
+
+		// return array( 'requests' => $requests, 'total' => $total_count );
 	}
 
 	/**
@@ -1430,7 +1493,9 @@ class BP_Groups_Group {
 
 		// Fetch the logged-in user's status within each group.
 		if ( is_user_logged_in() ) {
-			$user_status_results = $wpdb->get_results( $wpdb->prepare( "SELECT group_id, is_confirmed, invite_sent FROM {$bp->groups->table_name_members} WHERE user_id = %d AND group_id IN ( {$group_ids} ) AND is_banned = 0", bp_loggedin_user_id() ) );
+			$user_status_results = $wpdb->get_results( $wpdb->prepare( "SELECT group_id, is_confirmed FROM {$bp->groups->table_name_members} WHERE user_id = %d AND group_id IN ( {$group_ids} ) AND is_banned = 0", bp_loggedin_user_id() ) );
+			$invited_to_groups = groups_get_invited_to_group_ids();
+			$requested_groups  = groups_get_membership_requested_group_ids();
 		} else {
 			$user_status_results = array();
 		}
@@ -1446,19 +1511,17 @@ class BP_Groups_Group {
 			$gid = $paged_groups[ $i ]->id;
 
 			if ( isset( $user_status[ $gid ] ) ) {
-
 				// The is_confirmed means the user is a member.
 				if ( $user_status[ $gid ]->is_confirmed ) {
 					$is_member = '1';
-
+				}
 				// The invite_sent means the user has been invited.
-				} elseif ( $user_status[ $gid ]->invite_sent ) {
+			} elseif ( in_array( $gid, $invited_to_groups ) ) {
 					$is_invited = '1';
 
 				// User has sent request, but has not been confirmed.
-				} else {
+			} elseif ( in_array( $gid, $requested_groups ) ) {
 					$is_pending = '1';
-				}
 			}
 
 			$paged_groups[ $i ]->is_member = $is_member;

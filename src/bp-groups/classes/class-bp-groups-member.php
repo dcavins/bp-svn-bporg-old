@@ -736,25 +736,17 @@ class BP_Groups_Member {
 	 * }
 	 */
 	public static function get_invites( $user_id, $limit = false, $page = false, $exclude = false ) {
-		$bp = buddypress();
 
-		// Get invites.
-		$args = array(
-			'component_name'    => $bp->groups->id,
-			'component_action'  => $bp->groups->id . '_invite',
-			'invite_sent'       => 'sent',
-		);
-		$invites = bp_get_user_invitations( $user_id, $args );
-
-		if ( $invites ) {
-			$group_ids = array_unique( wp_list_pluck( $invites, 'item_id' ) );
-		} else {
-			$group_ids = array( 0 );
-		}
+		$group_ids = self::get_invited_to_group_ids( $user_id );
 
 		// Remove excluded groups.
 		if ( $exclude ) {
 			$group_ids = array_diff( $group_ids, wp_parse_id_list( $exclude ) );
+		}
+
+		// Avoid passing an empty array.
+		if ( ! $group_ids ) {
+			$group_ids = array( 0 );
 		}
 
 		// Get a filtered list of groups.
@@ -778,18 +770,38 @@ class BP_Groups_Member {
 	 * @return int
 	 */
 	public static function get_invite_count_for_user( $user_id = 0 ) {
-		$bp = buddypress();
-
-		$args = array(
-			'component_name'   => $bp->groups->id,
-			'component_action' => $bp->groups->id . '_invite',
-			'invite_sent'      => 'sent',
-		);
-		$invites = bp_get_user_invitations( $user_id, $args );
-		// We only want to count distinct groups with outstanding invites.
-		$group_ids = wp_list_pluck( $invites, 'item_id' );
+		$group_ids = self::get_invited_to_group_ids( $user_id );
 
 		return count( array_unique( $group_ids ) );
+	}
+
+	/**
+	 * Get an array of group IDs to which a user is invited.
+	 *
+	 * @since 2.7.0
+	 *
+	 * @param int $user_id The user ID.
+	 *
+	 * @return array Array of group IDs.
+	 */
+	public static function get_invited_to_group_ids( $user_id = 0 ) {
+		$bp = buddypress();
+
+		// Get invites.
+		$args = array(
+			'component_name'    => $bp->groups->id,
+			'component_action'  => $bp->groups->id . '_invite',
+			'invite_sent'       => 'sent',
+		);
+		$invites = bp_get_user_invitations( $user_id, $args );
+
+		if ( $invites ) {
+			$group_ids = array_unique( wp_list_pluck( $invites, 'item_id' ) );
+		} else {
+			$group_ids = array();
+		}
+
+		return $group_ids;
 	}
 
 	/**
@@ -821,7 +833,8 @@ class BP_Groups_Member {
 		if ( $invites ) {
 			return current( $invites )->id;
 		} else {
-			return null;
+			// If nothing found, mimic the previous behavior.
+			return 0;
 		}
 	}
 
@@ -1007,13 +1020,43 @@ class BP_Groups_Member {
 			'component_action' => $bp->groups->id . '_invite',
 			'item_id'          => $group_id,
 		);
-		$invites = bp_get_user_requests( $user_id, $args );
+		$requests = bp_get_user_requests( $user_id, $args );
 
-		if ( $invites ) {
-			return current( $invites )->id;
+		if ( $requests ) {
+			return current( $requests )->id;
 		} else {
-			return null;
+			// If nothing found, mimic the previous behavior.
+			return 0;
 		}
+	}
+
+	/**
+	 * Get an array of group IDs to which a user has requested membership.
+	 *
+	 * @since 2.7.0
+	 *
+	 * @param int $user_id The user ID.
+	 *
+	 * @return array Array of group IDs.
+	 */
+	public static function get_membership_requested_group_ids( $user_id = 0 ) {
+		$bp = buddypress();
+
+		// Get invites.
+		$args = array(
+			'component_name'    => $bp->groups->id,
+			'component_action'  => $bp->groups->id . '_invite',
+			'invite_sent'       => 'sent',
+		);
+		$requests = bp_get_user_requests( $user_id, $args );
+
+		if ( $requests ) {
+			$group_ids = array_unique( wp_list_pluck( $requests, 'item_id' ) );
+		} else {
+			$group_ids = array();
+		}
+
+		return $group_ids;
 	}
 
 	/**

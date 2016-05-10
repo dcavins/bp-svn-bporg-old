@@ -5,28 +5,39 @@
  */
 class BP_Tests_BP_Groups_Member_TestCases extends BP_UnitTestCase {
 	public static function invite_user_to_group( $user_id, $group_id, $inviter_id ) {
-		$invite                = new BP_Groups_Member;
-		$invite->group_id      = $group_id;
-		$invite->user_id       = $user_id;
-		$invite->date_modified = bp_core_current_time();
-		$invite->inviter_id    = $inviter_id;
-		$invite->is_confirmed  = 0;
-		$invite->invite_sent   = 1;
+		$bp = buddypress();
 
-		$invite->save();
-		return $invite->id;
+		$args = array(
+			'user_id'          => $user_id,
+			'inviter_id'       => $inviter_id,
+			'component_name'   => $bp->groups->id,
+			'component_action' => $bp->groups->id . '_invite',
+			'item_id'          => $group_id,
+			'invite_sent'      => 1,
+		);
+		return bp_invitations_add_invitation( $args );
 	}
 
 	public static function create_group_membership_request( $user_id, $group_id ) {
-		$request                = new BP_Groups_Member;
-		$request->group_id      = $group_id;
-		$request->user_id       = $user_id;
-		$request->date_modified = bp_core_current_time();
-		$request->inviter_id    = 0;
-		$request->is_confirmed  = 0;
+		// $request                = new BP_Groups_Member;
+		// $request->group_id      = $group_id;
+		// $request->user_id       = $user_id;
+		// $request->date_modified = bp_core_current_time();
+		// $request->inviter_id    = 0;
+		// $request->is_confirmed  = 0;
 
-		$request->save();
-		return $request->id;
+		// $request->save();
+		// return $request->id;
+
+		$bp = buddypress();
+
+		$args = array(
+			'user_id'          => $user_id,
+			'component_name'   => $bp->groups->id,
+			'component_action' => $bp->groups->id . '_invite',
+			'item_id'          => $group_id,
+		);
+		return bp_invitations_add_request( $args );
 	}
 
 	public function test_get_recently_joined_with_filter() {
@@ -990,7 +1001,7 @@ class BP_Tests_BP_Groups_Member_TestCases extends BP_UnitTestCase {
 		$this->assertTrue( is_numeric( $member ) && $member > 0 );
 		// Check that the invite has been removed.
 		$invite = groups_check_user_has_invite( $u2, $g1, 'all' );
-		$this->assertTrue( is_null( $invite ) );
+		$this->assertEquals( $invite, 0 );
 	}
 
 	/**
@@ -1024,7 +1035,7 @@ class BP_Tests_BP_Groups_Member_TestCases extends BP_UnitTestCase {
 		groups_accept_invite( $u2, $g1 );
 
 		// Check that the membership request has been removed.
-		$this->assertTrue( 0 == groups_check_for_membership_request( $u2, $g1 ) );
+		$this->assertEquals( groups_check_for_membership_request( $u2, $g1 ), 0 );
 	}
 
 	/**
@@ -1178,9 +1189,9 @@ class BP_Tests_BP_Groups_Member_TestCases extends BP_UnitTestCase {
 		groups_send_membership_request( $u1, $g1 );
 
 		// Get group invitations of any type, from any user in the group.
-		$member = new BP_Groups_Member( $u1, $g1 );
+		// $member = new BP_Groups_Member( $u1, $g1 );
 
-		groups_accept_membership_request( $member->id );
+		groups_accept_membership_request( false, $u1, $g1 );
 
 		// User should now be a group member.
 		$member = groups_is_user_member( $u1, $g1 );

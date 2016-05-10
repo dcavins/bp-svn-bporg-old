@@ -1154,11 +1154,25 @@ class BP_Invitations_Invitation {
 
 		// Filter the results
 		// Assemble filter array for use in `wp_list_filter()`.
-		$filters = wp_array_slice_assoc( $r, array( 'component_name', 'component_action', 'item_id', 'secondary_item_id', 'type', 'invite_sent', 'accepted' ) );
+		$filters = wp_array_slice_assoc( $r, array( 'user_id', 'inviter_id', 'component_name', 'component_action', 'item_id', 'secondary_item_id', 'type', 'invite_sent', 'accepted' ) );
 
 		foreach ( $filters as $filter_name => $filter_value ) {
 			if ( ! $filter_value ) {
 				unset( $filters[ $filter_name ] );
+			} elseif ( 'type' == $filter_name ) {
+				// Special case for handling type values.
+				switch ( $filter_value ) {
+					case 'invite':
+						$filters[ $filter_name ] = 'invite';
+						break;
+					case 'request':
+						$filters[ $filter_name ] = 'request';
+						break;
+					default:
+						// Treat any other value as 'all'--no filtering.
+						unset( $filters[ $filter_name ] );
+						break;
+				}
 			} elseif ( 'invite_sent' == $filter_name ) {
 				// Special case for handling invite_sent values.
 				switch ( $filter_value ) {
@@ -1191,7 +1205,7 @@ class BP_Invitations_Invitation {
 		}
 
 		if ( ! empty( $filters ) ) {
-			$invitations = wp_list_filter( $invitations, $filters );
+			$invitations = self::invite_list_filter( $invitations, $filters );
 		}
 
 		// Sort the results on a column name.
@@ -1212,5 +1226,58 @@ class BP_Invitations_Invitation {
 		}
 
 		return $invitations;
+	}
+
+	/**
+	 * Filters a list of objects, based on a set of key => value arguments.
+	 * Almost an exact copy of `wp_list_filter()`, this function allows the
+	 * filters to be arrays of values for an `IN()` analog.
+	 *
+	 * @since 2.7.0
+	 *
+	 * @param array  $list     An array of objects to filter.
+	 * @param array  $args     Optional. An array of key => value arguments to match
+	 *                         against each object. Default empty array.
+	 * @param string $operator Optional. The logical operation to perform. 'AND' means
+	 *                         all elements from the array must match. 'OR' means only
+	 *                         one element needs to match. 'NOT' means no elements may
+	 *                         match. Default 'AND'.
+	 * @return array Array of found values.
+	 */
+	private static function invite_list_filter( $list, $args = array(), $operator = 'AND' ) {
+	    if ( ! is_array( $list ) ){
+	        return array();
+	    }
+
+	    if ( empty( $args ) ) {
+	        return $list;
+	    }
+
+	    $operator = strtoupper( $operator );
+	    $count = count( $args );
+	    $filtered = array();
+
+	    foreach ( $list as $key => $obj ) {
+	        $to_match = (array) $obj;
+
+	        $matched = 0;
+	        foreach ( $args as $m_key => $m_value ) {
+	            if ( array_key_exists( $m_key, $to_match ) ) {
+	            	if ( is_array( $m_value) && in_array( $to_match[ $m_key ], $m_value ) ) {
+		                $matched++;
+	            	} elseif ( $m_value == $to_match[ $m_key ] ) {
+		                $matched++;
+	            	}
+	            }
+	        }
+
+	        if ( ( 'AND' == $operator && $matched == $count )
+	          || ( 'OR' == $operator && $matched > 0 )
+	          || ( 'NOT' == $operator && 0 == $matched ) ) {
+	            $filtered[$key] = $obj;
+	        }
+	    }
+
+	    return $filtered;
 	}
 }

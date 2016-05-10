@@ -195,14 +195,14 @@ function bp_invitations_add_request( $args = array() ) {
 
 	$r = wp_parse_args( $args, array(
 		'user_id'           => 0,
-		'inviter_id'		=> 0,
-		'invitee_email'		=> '',
+		'inviter_id'        => 0,
+		'invitee_email'     => '',
 		'component_name'    => '',
 		'component_action'  => '',
 		'item_id'           => 0,
 		'secondary_item_id' => 0,
-		'type'				=> 'request',
-		'content'			=> '',
+		'type'              => 'request',
+		'content'           => '',
 		'date_modified'     => bp_core_current_time(),
 		'invite_sent'       => 0,
 		'accepted'          => 0
@@ -274,6 +274,7 @@ function bp_invitations_add_request( $args = array() ) {
 		$request->item_id           = $r['item_id'];
 		$request->secondary_item_id = $r['secondary_item_id'];
 		$request->type              = $r['type'];
+		$request->content           = $r['content'];
 		$request->date_modified     = $r['date_modified'];
 		$request->invite_sent       = $r['invite_sent'];
 		$request->accepted          = $r['accepted'];
@@ -357,6 +358,10 @@ function bp_invitations_get_invitation_by_id( $id ) {
  * @return array Located invitations.
  */
 function bp_invitations_get_invitations( $args ) {
+	// Default to returning invitations, not requests.
+	if ( empty( $args['type'] ) ) {
+		$args['type'] = 'invite';
+	}
 	return BP_Invitations_Invitation::get( $args );
 }
 
@@ -478,7 +483,8 @@ function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email 
 			$all_args = array(
 				'user_id'     => $user_id,
 				'invite_sent' => 'all',
-				'accepted'    => 'all'
+				'accepted'    => 'all',
+				'type'        => 'all'
 			);
 			$invitations = bp_invitations_get_invitations( $all_args );
 			wp_cache_set( 'all_to_user_' . $user_id, $invitations, 'bp_invitations' );
