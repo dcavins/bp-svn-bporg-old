@@ -555,22 +555,22 @@ add_action( 'bp_actions', 'groups_action_group_feed' );
 /**
  * Clean up requests/invites when a member leaves a group.
  *
- * @since 1.2.0
+ * @since 2.7.0
  *
- * @return false|null False on failure.
+ * @return int|false Number of rows changed on success. False on failure.
  */
 function groups_action_clean_up_invites_requests( $user_id, $group_id ) {
 	$bp = buddypress();
+
 	$args = array(
 		'user_id'          => $user_id,
 		'component_name'   => $bp->groups->id,
 		'component_action' => $bp->groups->id . '_invite',
 		'item_id'          => $group_id,
 		'type'             => 'all',
+		'invite_sent'      => 'all',
 		'accepted'         => 'all'
 	);
 	bp_invitations_delete_invitations( $args );
 }
-// @TODO: delete requests/invites when a user is deleted from group:
 add_action( 'bp_groups_member_after_delete', 'groups_action_clean_up_invites_requests', 10, 2 );
-

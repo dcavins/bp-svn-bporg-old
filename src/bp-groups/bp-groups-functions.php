@@ -481,16 +481,19 @@ function groups_join_group( $group_id, $user_id = 0 ) {
 		$user_id = bp_loggedin_user_id();
 
 	// Check if the user has any outstanding invites. If so, delete it.
-	if ( groups_check_user_has_invite( $user_id, $group_id ) )
+	if ( groups_check_user_has_invite( $user_id, $group_id ) ) {
 		groups_delete_invite( $user_id, $group_id );
+	}
 
 	// Check if the user has an outstanding request. If so, delete it.
-	if ( groups_check_for_membership_request( $user_id, $group_id ) )
-		groups_delete_membership_request( null, $user_id, $group_id );
+	if ( groups_check_for_membership_request( $user_id, $group_id ) ) {
+		groups_delete_membership_request( false, $user_id, $group_id );
+	}
 
 	// User is already a member, just return true.
-	if ( groups_is_user_member( $user_id, $group_id ) )
+	if ( groups_is_user_member( $user_id, $group_id ) ) {
 		return true;
+	}
 
 	$new_member                = new BP_Groups_Member;
 	$new_member->group_id      = $group_id;
@@ -501,7 +504,7 @@ function groups_join_group( $group_id, $user_id = 0 ) {
 	$new_member->date_modified = bp_core_current_time();
 	$new_member->is_confirmed  = 1;
 
-	if ( !$new_member->save() )
+	if ( ! $new_member->save() )
 		return false;
 
 	$bp = buddypress();
@@ -1138,16 +1141,7 @@ function groups_invite_user( $args = '' ) {
 		groups_accept_membership_request( null, $args['user_id'], $args['group_id'] );
 
 	// Otherwise, create a new invitation.
-	} elseif ( ! groups_is_user_member( $args['user_id'], $args['group_id'] ) && ! groups_check_user_has_invite( $args['user_id'], $args['group_id'], 'all' ) ) {
-			// $invite                = new BP_Groups_Member;
-			// $invite->group_id      = $group_id;
-			// $invite->user_id       = $user_id;
-			// $invite->date_modified = $date_modified;
-			// $invite->inviter_id    = $inviter_id;
-			// $invite->is_confirmed  = $is_confirmed;
-
-			// if ( !$invite->save() )
-			// 	return false;
+	} elseif ( ! groups_is_user_member( $args['user_id'], $args['group_id'] ) && ! groups_check_has_invite_from_user( $args['user_id'], $args['group_id'], $args['inviter_id'], 'all' ) ) {
 
 		$bp = buddypress();
 
@@ -1358,14 +1352,8 @@ function groups_send_invites( $user_id, $group_id ) {
 	);
 
 	foreach ( $invited_users as $invited_user_id ) {
-		$member = new BP_Groups_Member( $invited_user_id, $group_id );
-
-		// Send the actual invite.
-		// groups_notification_group_invites( $group, $member, $user_id );
-		groups_notification_single_group_invite( $group_id, $user_id, $invited_user_id, false );
-
-		$member->invite_sent = 1;
-		$member->save();
+		// Send the notification and associated email.
+		groups_notification_single_group_invite( $group_id, $invited_user_id, $user_id, false );
 
 		$invite_args['user_id'] = $invited_user_id;
 		if ( bp_invitations_mark_sent( $invite_args ) ) {
@@ -1403,7 +1391,6 @@ function groups_send_invites( $user_id, $group_id ) {
  *                      user but have not yet accepted.
  */
 function groups_get_invites_for_group( $user_id, $group_id ) {
-	// DC: Updated
 	return BP_Groups_Group::get_invites( $user_id, $group_id );
 }
 
@@ -1441,8 +1428,26 @@ function groups_get_invites_for_group_by_data( $group_id, $args = array() ) {
  * @return bool True if an invitation is found, otherwise false.
  */
 function groups_check_user_has_invite( $user_id, $group_id, $type = 'sent' ) {
-	// DC: Updated
 	return BP_Groups_Member::check_has_invite( $user_id, $group_id, $type );
+}
+
+/**
+ * Check to see whether a user has already been invited to a group by a particular user.
+ *
+ * By default, the function checks for invitations that have been sent.
+ * Entering 'all' as the $type parameter will return unsent invitations as
+ * well (useful to make sure AJAX requests are not duplicated).
+ *
+ * @since 1.0.0
+ *
+ * @param int    $user_id  ID of potential group member.
+ * @param int    $group_id ID of potential group.
+ * @param string $type     Optional. Use 'sent' to check for sent invites,
+ *                         'all' to check for all. Default: 'sent'.
+ * @return bool True if an invitation is found, otherwise false.
+ */
+function groups_check_has_invite_from_user( $user_id, $group_id, $inviter_id = 0, $type = 'sent' ) {
+	return BP_Groups_Member::check_has_invite_from_user( $user_id, $group_id, $inviter_id, $type = 'sent' );
 }
 
 /**
@@ -1468,7 +1473,8 @@ function groups_get_single_invite( $user_id, $group_id, $inviter_id ) {
 		'component_name'    => $bp->groups->id,
 		'component_action'  => $bp->groups->id . '_invite',
 		'item_id'           => $group_id,
-		'accepted'          => 0
+		'invite_sent'       => 'all',
+		'accepted'          => 'all'
 	);
 	$invite = bp_get_user_invitations( $user_id, $args );
 	if ( $invite ) {

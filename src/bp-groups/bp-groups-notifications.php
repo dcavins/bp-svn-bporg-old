@@ -277,7 +277,7 @@ function groups_notification_single_group_invite( $group_id, $user_id, $inviter_
 	$invite = groups_get_single_invite( $user_id, $group_id, $inviter_id );
 
 	// Bail if no invite, or if member has already been notified.
-	if ( ! $invite || ( ! empty( $invite->invite_sent ) && ! $resend ) ) {
+	if ( ! $invite || ( $invite->invite_sent && ! $resend ) ) {
 		return false;
 	}
 
@@ -312,6 +312,7 @@ function groups_notification_single_group_invite( $group_id, $user_id, $inviter_
 			'invite.content' => $invite->content,
 		),
 	);
+
 	bp_send_email( 'groups-invitation', (int) $invited_user_id, $args );
 }
 

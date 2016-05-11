@@ -6,7 +6,7 @@
  * @package BuddyPress
  * @subpackage Invitations
  *
- * @since 2.6.0
+ * @since 2.7.0
  */
 
 // Exit if accessed directly.
@@ -17,14 +17,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * Use this class to create, access, edit, or delete BuddyPress Invitations.
  *
- * @since 2.6.0
+ * @since 2.7.0
  */
 class BP_Invitations_Invitation {
 
 	/**
 	 * The invitation ID.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var int
 	 */
@@ -33,7 +33,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * The ID of the invited user.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var int
 	 */
@@ -42,7 +42,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * The ID of the user who created the invitation.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var int
 	 */
@@ -52,7 +52,7 @@ class BP_Invitations_Invitation {
 	 * The email address of the invited user.
 	 * Used when extending an invitation to someone who does not belong to the site.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var string
 	 */
@@ -61,7 +61,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * The name of the related component.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var string
 	 */
@@ -70,7 +70,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * The name of the related component action.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var string
 	 */
@@ -80,7 +80,7 @@ class BP_Invitations_Invitation {
 	 * The ID associated with the invitation and component.
 	 * Example: the group ID if a group invitation
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var int
 	 */
@@ -90,7 +90,7 @@ class BP_Invitations_Invitation {
 	 * The secondary ID associated with the invitation and component.
 	 * Example: a taxonomy term ID if invited to a site's category-specific RSS feed
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var int
 	 */
@@ -100,7 +100,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Invite or request.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var string
 	 */
@@ -109,7 +109,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Extra information provided by the requester or inviter.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var string
 	 */
@@ -118,7 +118,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * The date the invitation was last modified.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var string
 	 */
@@ -127,7 +127,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Has the invitation been sent, or is it a draft invite?
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var bool
 	 */
@@ -136,7 +136,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Has the invitation been accepted by the invitee?
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 * @access public
 	 * @var bool
 	 */
@@ -147,7 +147,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Constructor method.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param int $id Optional. Provide an ID to access an existing
 	 *        invitation item.
@@ -162,7 +162,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Update or insert invitation details into the database.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @global wpdb $wpdb WordPress database object.
 	 *
@@ -217,7 +217,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Fetch data for an existing invitation from the database.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @global BuddyPress $bp The one true BuddyPress instance.
 	 * @global wpdb $wpdb WordPress database object.
@@ -251,7 +251,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Create a invitation entry.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $data {
 	 *     Array of invitation data, passed to {@link wpdb::insert()}.
@@ -280,7 +280,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Update invitations.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @see wpdb::update() for further description of paramater formats.
 	 *
@@ -302,7 +302,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Delete invitations.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @see wpdb::update() for further description of paramater formats.
 	 *
@@ -323,7 +323,7 @@ class BP_Invitations_Invitation {
 	 * Used by BP_Invitations_Invitation::get() to create its WHERE
 	 * clause.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $args See {@link BP_Invitations_Invitation::get()}
 	 *        for more details.
@@ -418,20 +418,6 @@ class BP_Invitations_Invitation {
 
 		// type
 		if ( ! empty( $args['type'] ) && 'all' !== $args['type'] ) {
-			// if ( ! is_array( $args['type'] ) ) {
-			// 	$types = explode( ',', $args['type'] );
-			// } else {
-			// 	$types = $args['type'];
-			// }
-
-			// $type_clean = array();
-			// foreach ( $types as $ty ) {
-			// 	$type_clean[] = $wpdb->prepare( '%s', $ty );
-			// }
-
-			// $types_in = implode( ',', $type_clean );
-			// $where_conditions['type'] = "type IN ({$types_in})";
-
 			if ( 'invite' == $args['type'] || 'request' == $args['type'] ) {
 				$type_clean = $wpdb->prepare( '%s', $args['type'] );
 				$where_conditions['type'] = "type = {$type_clean}";
@@ -478,7 +464,7 @@ class BP_Invitations_Invitation {
 	 * Used by BP_Invitations_Invitation::get() to create its ORDER BY
 	 * clause.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $args See {@link BP_Invitations_Invitation::get()}
 	 *        for more details.
@@ -515,7 +501,7 @@ class BP_Invitations_Invitation {
 	 *
 	 * Used by BP_Invitations_Invitation::get() to create its LIMIT clause.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $args See {@link BP_Invitations_Invitation::get()}
 	 *        for more details.
@@ -572,7 +558,7 @@ class BP_Invitations_Invitation {
 	 *
 	 * which can easily be passed as arguments to the $wpdb methods.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param $args Associative array of filter arguments.
 	 *        See {@BP_Invitations_Invitation::get()} for a breakdown.
@@ -633,21 +619,36 @@ class BP_Invitations_Invitation {
 		}
 
 		// type
-		if ( ! empty( $args['type'] ) ) {
-			$where_clauses['data']['type'] = $args['type'];
-			$where_clauses['format'][] = '%s';
+		if ( ! empty( $args['type'] ) && 'all' !== $args['type'] ) {
+			if ( 'invite' == $args['type'] || 'request' == $args['type'] ) {
+				$where_clauses['data']['type'] = $args['type'];
+				$where_clauses['format'][] = '%s';
+			}
 		}
 
 		// invite_sent
-		// @TODO how to handle. As "draft", "sent" & "all"?
-		if ( isset( $args['invite_sent'] ) ) {
-			$where_clauses['data']['invite_sent'] = ! empty( $args['invite_sent'] ) ? 1 : 0;
-			$where_clauses['format'][] = '%d';
+		// Only create a where statement if something less than "all" has been
+		// specifically requested.
+		if ( ! empty( $args['invite_sent'] ) && 'all' !== $args['invite_sent'] ) {
+			if ( $args['invite_sent'] == 'draft' ) {
+				$where_clauses['data']['invite_sent'] = 0;
+				$where_clauses['format'][] = '%d';
+			} else if ( $args['invite_sent'] == 'sent' ) {
+				$where_clauses['data']['invite_sent'] = 1;
+				$where_clauses['format'][] = '%d';
+			}
 		}
 
 		// accepted
-		$where_clauses['data']['accepted'] = ! empty( $args['accepted'] ) ? 1 : 0;
-		$where_clauses['format'][] = '%d';
+		if ( ! empty( $args['accepted'] ) && 'all' !== $args['accepted'] ) {
+			if ( $args['accepted'] == 'pending' ) {
+				$where_clauses['data']['accepted'] = 0;
+				$where_clauses['format'][] = '%d';
+			} else if ( $args['accepted'] == 'accepted' ) {
+				$where_clauses['data']['accepted'] = 1;
+				$where_clauses['format'][] = '%d';
+			}
+		}
 
 		return $where_clauses;
 	}
@@ -658,7 +659,7 @@ class BP_Invitations_Invitation {
 	 * @TODO: use?
 	 * Check that a specific invitation is for a specific user.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param int $user_id ID of the user being checked.
 	 * @param int $invitation_id ID of the invitation being checked.
@@ -676,7 +677,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Get invitations, based on provided filter parameters.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $args {
 	 *     Associative array of arguments. All arguments but $page and
@@ -726,6 +727,7 @@ class BP_Invitations_Invitation {
 	 *                                           Default: false (no pagination,
 	 *                                           all items).
 	 * }
+	 *
 	 * @return array Located invitations.
 	 */
 	public static function get( $args = array() ) {
@@ -793,7 +795,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Get a count of total invitations matching a set of arguments.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @see BP_Invitations_Invitation::get() for a description of
 	 *      arguments.
@@ -829,7 +831,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Update invitations.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @see BP_Invitations_Invitation::get() for a description of
 	 *      accepted update/where arguments.
@@ -856,7 +858,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Delete invitations.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @see BP_Invitations_Invitation::get() for a description of
 	 *      accepted where arguments.
@@ -879,7 +881,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Delete a single invitation by ID.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @see BP_Invitations_Invitation::delete() for explanation of
 	 *      return value.
@@ -893,102 +895,12 @@ class BP_Invitations_Invitation {
 		) );
 	}
 
-	/**
-	 * Get incoming invitations for a user, in a pagination-friendly format.
-	 *
-	 * @since 2.6.0
-	 *
-	 * @param array $args {
-	 *     Array of arguments.
-	 *     @type int $user_id ID of the user for whom the invitations are
-	 *           being fetched. Default: logged-in user ID.
-	 *     @type string $invite_sent Limit to draft, sent or all invitations.
-	 *			 'draft' returns only unsent invitations, 'sent' returns only
-	 *			 sent invitations, 'all' returns all. Default: 'sent'.
-	 *     @type int $page Number of the page to return. Default: 1.
-	 *     @type int $per_page Number of results to display per page.
-	 *           Default: 10.
-	 *     @type string $search_terms Optional. A term to search against in
-	 *           the 'component_name' and 'component_action' columns.
-	 * }
-	 * @return array {
-	 *     @type array $invitations Array of invitation results.
-	 *     @type int $total Count of all located invitations matching
-	 *           the query params.
-	 * }
-	 */
-	// public static function get_incoming_invitations_for_user( $args = array() ) {
-	// 	$r = wp_parse_args( $args, array(
-	// 		'user_id'      	=> bp_loggedin_user_id(),
-	// 		'invite_sent'	=> 'sent',
-	// 		'page'         	=> 1,
-	// 		'per_page'     	=> 10,
-	// 		'search_terms' 	=> '',
-	// 	) );
-
-	// 	$invitations = self::get( $r );
-
-	// 	// Bail if no invitations
-	// 	if ( empty( $invitations ) ) {
-	// 		return false;
-	// 	}
-
-	// 	$total_count = self::get_total_count( $r );
-
-	// 	return array( 'invitations' => &$invitations, 'total' => $total_count );
-	// }
-
-	/**
-	 * Get ougoing invitations for a user, in a pagination-friendly format.
-	 *
-	 * @since 2.6.0
-	 *
-	 * @param array $args {
-	 *     Array of arguments.
-	 *     @type int $inviter_id ID of the user for whom the ougoing invitations
-	 *			 are being fetched. Default: logged-in user ID.
-	 *     @type string $invite_sent Limit to draft, sent or all invitations.
-	 *			 'draft' returns only unsent invitations, 'sent' returns only
-	 *			 sent invitations, 'all' returns all. Default: 'all'.
-	 *     @type int $page Number of the page to return. Default: 1.
-	 *     @type int $per_page Number of results to display per page.
-	 *           Default: 10.
-	 *     @type string $search_terms Optional. A term to search against in
-	 *           the 'component_name' and 'component_action' columns.
-	 * }
-	 * @return array {
-	 *     @type array $invitations Array of invitation results.
-	 *     @type int $total Count of all located invitations matching
-	 *           the query params.
-	 * }
-	 */
-	// public static function get_outgoing_invitations_for_user( $args = array() ) {
-	// 	$r = wp_parse_args( $args, array(
-	// 		'user_id'      	=> bp_loggedin_user_id(),
-	// 		'invite_sent'	=> 'all',
-	// 		'page'         	=> 1,
-	// 		'per_page'     	=> 10,
-	// 		'search_terms' 	=> '',
-	// 	) );
-
-	// 	$invitations = self::get( $r );
-
-	// 	// Bail if no invitations
-	// 	if ( empty( $invitations ) ) {
-	// 		return false;
-	// 	}
-
-	// 	$total_count = self::get_total_count( $r );
-
-	// 	return array( 'invitations' => &$invitations, 'total' => $total_count );
-	// }
-
 	/** Sent status ***********************************************************/
 
 	/**
 	 * Mark specific invitations as sent by invitation ID.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param int $id The ID of the invitation to mark as sent.
 	 */
@@ -1015,7 +927,7 @@ class BP_Invitations_Invitation {
 	 * Mark invitations as sent that are found by user_id, inviter_id, item id, and optional
 	 * secondary item id, and component name and action.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
  	 * @param int $user_id ID of user being invited.
 	 * @param int $inviter_id ID of user who created the invitation.
@@ -1043,7 +955,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Mark specific invitations as accepted by invitation ID.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param int $id The ID of the invitation to mark as sent.
 	 */
@@ -1070,7 +982,7 @@ class BP_Invitations_Invitation {
 	 * Mark invitations as accepted that are found by user_id, inviter_id,
 	 * item id, and optional secondary item id, and component name and action.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
  	 * @param int $user_id ID of user being invited.
 	 * @param int $inviter_id ID of user who created the invitation.
@@ -1096,7 +1008,7 @@ class BP_Invitations_Invitation {
 	/**
 	 * Filter a list of invitations based on an array of arguments.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $invitations List of invitation objects to filter.
 	 * @param array $r {

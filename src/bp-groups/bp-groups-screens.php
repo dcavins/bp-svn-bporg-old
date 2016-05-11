@@ -1274,43 +1274,54 @@ function groups_screen_group_admin_requests() {
 	}
 
 	$request_action = (string) bp_action_variable( 1 );
-	$membership_id  = (int) bp_action_variable( 2 );
+	$user_id        = (int) bp_action_variable( 2 );
+	$group_id       = bp_get_current_group_id();
 
-	if ( !empty( $request_action ) && !empty( $membership_id ) ) {
-		if ( 'accept' == $request_action && is_numeric( $membership_id ) ) {
+	if ( ! empty( $request_action ) && ! empty( $user_id ) ) {
+		if ( 'accept' == $request_action && is_numeric( $user_id ) ) {
 
 			// Check the nonce first.
-			if ( !check_admin_referer( 'groups_accept_membership_request' ) )
+			if ( ! check_admin_referer( 'groups_accept_membership_request' ) ) {
 				return false;
+			}
 
 			// Accept the membership request.
-			if ( !groups_accept_membership_request( $membership_id ) )
+			if ( ! groups_accept_membership_request( false, $user_id, $group_id ) ) {
 				bp_core_add_message( __( 'There was an error accepting the membership request. Please try again.', 'buddypress' ), 'error' );
-			else
+			} else {
 				bp_core_add_message( __( 'Group membership request accepted', 'buddypress' ) );
+			}
 
-		} elseif ( 'reject' == $request_action && is_numeric( $membership_id ) ) {
+		} elseif ( 'reject' == $request_action && is_numeric( $user_id ) ) {
 			/* Check the nonce first. */
-			if ( !check_admin_referer( 'groups_reject_membership_request' ) )
+			if ( ! check_admin_referer( 'groups_reject_membership_request' ) ) {
 				return false;
+			}
 
 			// Reject the membership request.
-			if ( !groups_reject_membership_request( $membership_id ) )
+			if ( ! groups_reject_membership_request(false, $user_id, $group_id ) ) {
 				bp_core_add_message( __( 'There was an error rejecting the membership request. Please try again.', 'buddypress' ), 'error' );
-			else
+			} else {
 				bp_core_add_message( __( 'Group membership request rejected', 'buddypress' ) );
+			}
 		}
+
+		// Was the member added to the group?
+		$membership_id = groups_is_user_member( $user_id, $group_id );
 
 		/**
 		 * Fires before the redirect if a group membership request has been handled.
 		 *
 		 * @since 1.0.0
+		 * @since 2.7.0 Added user ID and group ID parameters.
 		 *
 		 * @param int    $id             ID of the group that was edited.
 		 * @param string $request_action Membership request action being performed.
-		 * @param int    $membership_id  The key of the action_variables array that you want.
+		 * @param int    $membership_id  The membership ID of the new user; false if rejected.
+		 * @param int    $user_id        The ID of the requesting user.
+		 * @param int    $group_id       The ID of the requested group.
 		 */
-		do_action( 'groups_group_request_managed', $bp->groups->current_group->id, $request_action, $membership_id );
+		do_action( 'groups_group_request_managed', $bp->groups->current_group->id, $request_action, $membership_id, $user_id, $group_id );
 		bp_core_redirect( bp_get_group_permalink( groups_get_current_group() ) . 'admin/membership-requests/' );
 	}
 

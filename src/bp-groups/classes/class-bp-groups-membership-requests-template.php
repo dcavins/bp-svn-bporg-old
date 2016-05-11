@@ -133,7 +133,7 @@ class BP_Groups_Membership_Requests_Template {
 			// request must match the membership id, not the ID of
 			// the user (as it's returned by BP_Group_Member_Query).
 			$this->requests[ $rk ]->user_id = $rv->ID;
-			$this->requests[ $rk ]->id      = $rv->membership_id;
+			$this->requests[ $rk ]->id      = $rv->invitation_id;
 
 			// Miscellaneous values.
 			$this->requests[ $rk ]->group_id   = $r['group_id'];

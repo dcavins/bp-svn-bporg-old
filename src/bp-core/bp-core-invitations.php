@@ -4,7 +4,7 @@
  *
  * @package BuddyPress
  * @subpackage Invitations
- * @since 2.6.0
+ * @since 2.7.0
  */
 
 // Exit if accessed directly.
@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * This is a very minimal component that has no screens/navigation items of its
  * own, only a database.
  *
- * @since 2.6.0
+ * @since 2.7.0
  */
 function bp_setup_invitations_component() {
 	buddypress()->invitations = new BP_Invitations_Component();
@@ -31,7 +31,7 @@ add_action( 'bp_setup_components', 'bp_setup_invitations_component', 1 );
  * Add an invitation to a specific user, from a specific user, related to a
  * specific component.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param array $args {
  *     Array of arguments describing the invitation. All are optional.
@@ -78,7 +78,7 @@ function bp_invitations_add_invitation( $args = array() ) {
 	/**
 	 * Is this user allowed to extend invitations from this component/item?
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $r Describes the invitation to be added.
 	 */
@@ -170,7 +170,7 @@ function bp_invitations_send_invitation_by_id( $invitation_id ) {
  * Add a request to an item for a specific user, related to a
  * specific component.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param array $args {
  *     Array of arguments describing the invitation. All are optional.
@@ -216,7 +216,7 @@ function bp_invitations_add_request( $args = array() ) {
 	/**
 	 * Is the item accepting requests?
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 *
 	 * @param array $r Describes the invitation to be added.
 	 */
@@ -289,7 +289,7 @@ function bp_invitations_add_request( $args = array() ) {
 /**
  * Get a specific invitation by its ID.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param int $id ID of the invitation.
  * @return BP_Invitations_Invitation object
@@ -306,13 +306,13 @@ function bp_invitations_get_invitation_by_id( $id ) {
 /**
  * Get invitations, based on provided filter parameters.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param array $args {
  *     Associative array of arguments. All arguments but $page and
  *     $per_page can be treated as filter values for get_where_sql()
  *     and get_query_clauses(). All items are optional.
- *     @type int|array    $id                ID of invitation being requested.
+ *     @type int|array    $id                ID of invitation being updated.
  *                                           Can be an array of IDs.
  *     @type int|array    $user_id           ID of user being queried. Can be an
  *                                           Can be an array of IDs.
@@ -329,9 +329,10 @@ function bp_invitations_get_invitation_by_id( $id ) {
  *                                           Can be an array of multiple item IDs.
  *     @type int|array    $secondary_item_id ID of secondary associated item.
  *                                           Can be an array of multiple IDs.
- *     @type string       $invite_sent       Limit to draft, sent or all
- *                                           'draft' limits to unsent invites,
- *                                           'sent' returns only sent invites,
+ *     @type string|array $type              Type of item. An "invite" is sent
+ *                                           from one user to another.
+ *                                           A "request" is submitted by a
+ *                                           user and no inviter is required.
  *                                           'all' returns all. Default: 'all'.
  *     @type string       $invite_sent       Limit to draft, sent or all
  *                                           'draft' limits to unsent invites,
@@ -355,6 +356,7 @@ function bp_invitations_get_invitation_by_id( $id ) {
  *                                           Default: false (no pagination,
  *                                           all items).
  * }
+ *
  * @return array Located invitations.
  */
 function bp_invitations_get_invitations( $args ) {
@@ -370,7 +372,7 @@ function bp_invitations_get_invitations( $args ) {
  * Swiss Army Knife function. When possible, use the filter_invitations
  * functions that take advantage of caching.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param array $args {
  *     Associative array of arguments. All arguments but $page and
@@ -506,7 +508,7 @@ function bp_get_user_invitations( $user_id = 0, $args = array(), $invitee_email 
 	 * This hook is a variable hook dependent on the current step
 	 * in the creation process.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 */
 	return apply_filters( $filter_hook_name, $invitations, $user_id, $args );
 }
@@ -527,7 +529,7 @@ function bp_get_user_requests( $user_id = 0, $args = array() ){
  * filter the complete result set in PHP, in order to take advantage of
  * the cache.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param array $args {
  *     Array of optional arguments.
@@ -594,7 +596,7 @@ function bp_get_invitations_from_user( $inviter_id = 0, $args = array() ) {
 	 * This hook is a variable hook dependent on the current step
 	 * in the creation process.
 	 *
-	 * @since 2.6.0
+	 * @since 2.7.0
 	 */
 	return apply_filters( 'bp_get_invitations_from_user', $invitations, $inviter_id, $args );
 }
@@ -604,7 +606,7 @@ function bp_get_invitations_from_user( $inviter_id = 0, $args = array() ) {
 /**
  * Accept invitation, based on provided filter parameters.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @see BP_Invitations_Invitation::get() for a description of
  *      accepted update/where arguments.
@@ -634,7 +636,7 @@ function bp_invitations_accept_invitation( $args = array() ) {
 		return false;
 	}
 
-	//@TODO: access check
+	//@TODO: access check (invitee or site admin)?
 	$success = false;
 	if ( apply_filters( 'bp_invitations_accept_invitation', true, $args ) ) {
 		// Mark invitations & requests to this item for this user.
@@ -646,7 +648,7 @@ function bp_invitations_accept_invitation( $args = array() ) {
 /**
  * Accept invitation, based on provided filter parameters.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @see BP_Invitations_Invitation::get() for a description of
  *      accepted update/where arguments.
@@ -675,7 +677,7 @@ function bp_invitations_accept_request( $args = array() ) {
 		return false;
 	}
 
-	//@TODO: access check
+	//@TODO: access check (object admin or site admin)?
 	$success = false;
 	if ( apply_filters( 'bp_invitations_accept_request', true, $args ) ) {
 		// Delete all related invitations & requests to this item for this user.
@@ -687,7 +689,7 @@ function bp_invitations_accept_request( $args = array() ) {
 /**
  * Update invitation, based on provided filter parameters.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @see BP_Invitations_Invitation::get() for a description of
  *      accepted update/where arguments.
@@ -701,20 +703,20 @@ function bp_invitations_accept_request( $args = array() ) {
  * @return int|bool Number of rows updated on success, false on failure.
  */
 function bp_invitations_update_invitation( $update_args = array(), $where_args = array() ) {
-	//@TODO: access check
+	//@TODO: access check (invitee, inviter or site admin)?
 	return BP_Invitations_Invitation::update( $update_args, $where_args );
 }
 
 /**
  * Mark invitation as sent by invitation ID.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param int $id The ID of the invitation to mark as sent.
  * @return bool True on success, false on failure.
  */
 function bp_invitations_mark_sent_by_id( $id ) {
-	//@TODO: access check
+	//@TODO: access check (inviter or site admin)?
 	return BP_Invitations_Invitation::mark_sent( $id );
 }
 
@@ -723,7 +725,7 @@ function bp_invitations_mark_sent_by_id( $id ) {
  * invitee_email, component name and action, optional item id,
  * optional secondary item id.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param array $args {
  *     Associative array of arguments. All arguments but $page and
@@ -747,20 +749,20 @@ function bp_invitations_mark_sent_by_id( $id ) {
  * }
  */
 function bp_invitations_mark_sent( $args ) {
-	//@TODO: access check
+	//@TODO: access check (inviter or site admin)?
 	return BP_Invitations_Invitation::mark_sent_by_data( $args );
 }
 
 /**
  * Mark invitation as accepted by invitation ID.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param int $id The ID of the invitation to mark as sent.
  * @return bool True on success, false on failure.
  */
 function bp_invitations_mark_accepted_by_id( $id ) {
-	//@TODO: access check
+	//@TODO: access check (invitee or site admin)?
 	return BP_Invitations_Invitation::mark_accepted( $id );
 }
 
@@ -769,7 +771,7 @@ function bp_invitations_mark_accepted_by_id( $id ) {
  * invitee_email, component name and action, optional item id,
  * optional secondary item id.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param array $args {
  *     Associative array of arguments. All arguments but $page and
@@ -793,7 +795,7 @@ function bp_invitations_mark_accepted_by_id( $id ) {
  * }
  */
 function bp_invitations_mark_accepted( $args ) {
-	//@TODO: access check
+	//@TODO: access check (invitee or site admin)?
 	return BP_Invitations_Invitation::mark_accepted_by_data( $args );
 }
 
@@ -804,13 +806,13 @@ function bp_invitations_mark_accepted( $args ) {
  *
  * Used when rejecting invitations or membership requests.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param int $id ID of the invitation to delete.
  * @return int|false Number of rows deleted on success, false on failure.
  */
 function bp_invitations_delete_invitation_by_id( $id ) {
-	//@TODO: access check
+	//@TODO: access check (invitee, inviter or site admin)?
 	return BP_Invitations_Invitation::delete_by_id( $id );
 }
 
@@ -819,7 +821,7 @@ function bp_invitations_delete_invitation_by_id( $id ) {
  *
  * Used when declining invitations.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @see bp_invitations_get_invitations() for a description of
  *      accepted where arguments.
@@ -848,7 +850,7 @@ function bp_invitations_delete_invitation_by_id( $id ) {
  * @return int|false Number of rows deleted on success, false on failure.
  */
 function bp_invitations_delete_invitations( $args ) {
-	//@TODO: access check
+	//@TODO: access check (invitee, inviter or site admin)?
 	if ( empty( $args['type'] ) ) {
 		$args['type'] = 'invite';
 	}
@@ -860,7 +862,7 @@ function bp_invitations_delete_invitations( $args ) {
  *
  * Used when rejecting membership requests.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @see bp_invitations_get_invitations() for a description of
  *      accepted where arguments.
@@ -899,7 +901,7 @@ function bp_invitations_delete_requests( $args ) {
  * Used when clearing out invitations for an entire component. Possibly used
  * when deactivating a component that created invitations.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param string $component_name Name of the associated component.
  * @param string $component_action Optional. Name of the associated action.
@@ -916,26 +918,11 @@ function bp_invitations_delete_all_invitations_by_component( $component_name, $c
 /** Helpers *******************************************************************/
 
 /**
- * Get a count of incoming invitations for a user.
- *
- * @since 2.6.0
- *
- * @param int $user_id ID of the user whose incoming invitations are being
- *        counted.
- * @return int Incoming invitation count.
- */
-// function bp_invitations_get_incoming_invitation_count( $user_id = 0 ) {
-// 	$invitations = bp_invitations_get_incoming_invitations_for_user( $user_id );
-// 	$count       = ! empty( $invitations ) ? count( $invitations ) : 0;
-
-// 	return apply_filters( 'bp_invitations_get_incoming_invitation_count', (int) $count );
-// }
-
-/**
  * Return an array of component names that are currently active and have
  * registered Invitations callbacks.
+ * @TODO: Useful or not?
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @return array
  */
@@ -966,7 +953,7 @@ function bp_invitations_get_registered_components() {
 /**
  * Invalidate 'all_from_user_' and 'all_to_user_' caches when saving.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param BP_Invitations_Invitation $n Invitation object.
  */
@@ -986,7 +973,7 @@ add_action( 'bp_invitation_after_save', 'bp_invitations_clear_user_caches_after_
  * Invalidate 'all_from_user_' and 'all_to_user_' caches when
  * updating or deleting.
  *
- * @since 2.6.0
+ * @since 2.7.0
  *
  * @param int $args Invitation deletion arguments.
  */

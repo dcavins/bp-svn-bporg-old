@@ -839,6 +839,46 @@ class BP_Groups_Member {
 	}
 
 	/**
+	 * Check whether a user has an outstanding invitation to a given group.
+	 *
+	 * @since 1.6.0
+	 *
+	 * @param int    $user_id   ID of the potential invitee.
+	 * @param int    $group_id   ID of the group.
+	 * @param int    $inviter_id ID of the inviter. Defaults to logged-in user.
+	 * @param string $type     If 'sent', results are limited to those invitations
+	 *                         that have actually been sent (non-draft). Default: 'sent'.
+	 * @return int|null The ID of the invitation if found, otherwise null.
+	 */
+	public static function check_has_invite_from_user( $user_id, $group_id, $inviter_id, $type = 'sent' ) {
+		$bp = buddypress();
+
+		if ( ! $user_id || ! $group_id ){
+			return false;
+		}
+
+		if ( ! $inviter_id ) {
+			$inviter_id = bp_loggedin_user_id();
+		}
+
+		$args = array(
+			'inviter_id'       => $inviter_id,
+			'component_name'   => $bp->groups->id,
+			'component_action' => $bp->groups->id . '_invite',
+			'item_id'          => $group_id,
+			'invite_sent'      => $type,
+		);
+		$invites = bp_get_user_invitations( $user_id, $args );
+
+		if ( $invites ) {
+			return current( $invites )->id;
+		} else {
+			// If nothing found, mimic the previous behavior.
+			return 0;
+		}
+	}
+
+	/**
 	 * Delete an invitation, by specifying user ID and group ID.
 	 *
 	 * @since 1.6.0
