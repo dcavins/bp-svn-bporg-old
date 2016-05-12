@@ -26,6 +26,7 @@ function friends_clear_friend_object_cache( $friendship_id ) {
 	if ( !$friendship = new BP_Friends_Friendship( $friendship_id ) )
 		return false;
 
+	// @TODO: This is a cached set of random friends. Which is a weird thing to cache. Remove?
 	wp_cache_delete( 'friends_friend_ids_' .    $friendship->initiator_user_id, 'bp' );
 	wp_cache_delete( 'friends_friend_ids_' .    $friendship->friend_user_id,    'bp' );
 }
@@ -33,6 +34,39 @@ function friends_clear_friend_object_cache( $friendship_id ) {
 // List actions to clear object caches on.
 add_action( 'friends_friendship_accepted', 'friends_clear_friend_object_cache' );
 add_action( 'friends_friendship_deleted',  'friends_clear_friend_object_cache' );
+
+/**
+ * Clear friendship caches on friendship changes.
+ *
+ * @since 2.6.0
+ *
+ * @param int $friendship_id     ID of the friendship that has changed.
+ * @param int $initiator_user_id ID of the first user.
+ * @param int $friend_user_id    ID of the second user.
+ * @return bool
+ */
+function bp_friends_clear_bp_friends_friendships_cache( $friendship_id, $initiator_user_id, $friend_user_id ) {
+	wp_cache_delete( $initiator_user_id, 'bp_friends_friendships' );
+	wp_cache_delete( $friend_user_id,    'bp_friends_friendships' );
+}
+add_action( 'friends_friendship_requested', 'bp_friends_clear_bp_friends_friendships_cache', 10, 3 );
+add_action( 'friends_friendship_accepted',  'bp_friends_clear_bp_friends_friendships_cache', 10, 3 );
+add_action( 'friends_friendship_deleted',   'bp_friends_clear_bp_friends_friendships_cache', 10, 3 );
+
+/**
+ * Clear friendship caches on friendship changes.
+ *
+ * @since 2.6.0
+ *
+ * @param int                   $friendship_id The friendship ID.
+ * @param BP_Friends_Friendship $friendship Friendship object.
+ */
+function bp_friends_clear_bp_friends_friendships_cache_remove( $friendship_id, BP_Friends_Friendship $friendship ) {
+	wp_cache_delete( $friendship->initiator_user_id, 'bp_friends_friendships' );
+	wp_cache_delete( $friendship->friend_user_id,    'bp_friends_friendships' );
+}
+add_action( 'friends_friendship_withdrawn', 'bp_friends_clear_bp_friends_friendships_cache_remove', 10, 2 );
+add_action( 'friends_friendship_rejected',  'bp_friends_clear_bp_friends_friendships_cache_remove', 10, 2 );
 
 /**
  * Clear the friend request cache for the user not initiating the friendship.

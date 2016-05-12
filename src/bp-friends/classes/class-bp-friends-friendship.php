@@ -206,6 +206,106 @@ class BP_Friends_Friendship {
 	/** Static Methods ********************************************************/
 
 	/**
+	 * Get the friendships for a given user.
+	 *
+	 * @since 2.6.0
+	 *
+	 * @param int   $user_id              ID of the user whose friends are being retrieved.
+	 * @param array $args {
+	 *        Optional. Filter parameters.
+	 *        @type int    $id                ID of specific friendship to retrieve.
+	 *        @type int    $initiator_user_id ID of friendship initiator.
+	 *        @type int    $friend_user_id    ID of specific friendship to retrieve.
+	 *        @type int    $is_confirmed      Whether the friendship has been accepted.
+	 *        @type int    $is_limited        Whether the friendship is limited.
+	 *        @type string $order_by          Column name to order by.
+	 *        @type string $sort_order        ASC or DESC. Default DESC.
+	 * }
+	 * @param string $operator            Optional. Operator to use in `wp_list_filter()`.
+	 *
+	 * @return array $friendships Array of friendship objects.
+	 */
+	public static function get_friendships( $user_id, $args = array(), $operator = 'AND' ) {
+
+		if ( empty( $user_id ) ) {
+			$user_id = bp_loggedin_user_id();
+		}
+
+		$r = bp_parse_args( $args, array(
+			'id'                => 0,
+		    'initiator_user_id' => 0,
+		    'friend_user_id'    => 0,
+	   		'is_confirmed'      => false,
+	        'is_limited'        => false,
+	        'order_by'          => 'date_created',
+	        'sort_order'        => 'DESC',
+	        'page'              => false,
+	        'per_page'          => false
+	    ), 'bp_get_user_friendships' );
+
+		// First, we get all friendships that involve the user.
+		$friendships = wp_cache_get( $user_id, 'bp_friends_friendships' );
+		if ( false === $friendships ) {
+			global $wpdb;
+			$bp = buddypress();
+
+			$friendships = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$bp->friends->table_name} WHERE (initiator_user_id = %d OR friend_user_id = %d) ORDER BY date_created DESC", $user_id, $user_id ) );
+            wp_cache_set( $user_id, $friendships, 'bp_friends_friendships' );
+		}
+
+		if ( ! $friendships ) {
+			return array();
+		}
+
+	    // Normalize friendship data.
+		foreach ( $friendships as &$friendship ) {
+			// Integer values.
+			foreach ( array( 'id', 'initiator_user_id', 'friend_user_id' ) as $index ) {
+				$friendship->{$index} = intval( $friendship->{$index} );
+			}
+			// Boolean values.
+			$friendship->is_confirmed = (bool) $friendship->is_confirmed;
+			$friendship->is_limited   = (bool) $friendship->is_limited;
+		}
+
+		// Assemble filter array for use in `wp_list_filter()`.
+		$filters = wp_array_slice_assoc( $r, array( 'id', 'initiator_user_id', 'friend_user_id', 'is_confirmed', 'is_limited' ) );
+		foreach ( $filters as $filter_name => $filter_value ) {
+			if ( in_array( $filter_name, array( 'is_confirmed', 'is_limited' ) ) ) {
+				// Separate 'false' from meaningful 0s.
+				if ( false === $filter_value ) {
+					unset( $filters[ $filter_name ] );
+				}
+			} elseif ( ! $filter_value ) {
+				unset( $filters[ $filter_name ] );
+			}
+		}
+
+		if ( ! empty( $filters ) ) {
+			$friendships = wp_list_filter( $friendships, $filters, $operator );
+		}
+
+		// Sort the results on a column name.
+		if ( in_array( $r['order_by'], array( 'id', 'initiator_user_id', 'friend_user_id' ) ) ) {
+			$friendships = bp_sort_by_key( $friendships, $r['order_by'] );
+		}
+
+		// Adjust the sort direction of the results.
+		if ( 'ASC' === strtoupper( $r['sort_order'] ) ) {
+			// `true` to preserve keys.
+			$friendships = array_reverse( $friendships, true );
+		}
+
+		// Paginate the results.
+		if ( $r['per_page'] && $r['page'] ) {
+			$start       = ( $r['page'] - 1 ) * ( $r['per_page'] );
+			$friendships = array_slice( $friendships, $start, $r['per_page'] );
+		}
+
+		return $friendships;
+	}
+
+	/**
 	 * Get the IDs of a given user's friends.
 	 *
 	 * @since 1.0.0
@@ -221,23 +321,25 @@ class BP_Friends_Friendship {
 	public static function get_friend_user_ids( $user_id, $friend_requests_only = false, $assoc_arr = false ) {
 		global $wpdb;
 
-		if ( !empty( $friend_requests_only ) ) {
-			$oc_sql = 'AND is_confirmed = 0';
-			$friend_sql = $wpdb->prepare( " WHERE friend_user_id = %d", $user_id );
+		if ( ! empty( $friend_requests_only ) ) {
+			$args = array(
+				'is_confirmed' => 0,
+				'friend_user_id' => $user_id
+			);
 		} else {
-			$oc_sql = 'AND is_confirmed = 1';
-			$friend_sql = $wpdb->prepare( " WHERE (initiator_user_id = %d OR friend_user_id = %d)", $user_id, $user_id );
+			$args = array(
+				'is_confirmed' => 1,
+			);
 		}
 
-		$bp = buddypress();
-		$friends = $wpdb->get_results( "SELECT friend_user_id, initiator_user_id FROM {$bp->friends->table_name} {$friend_sql} {$oc_sql} ORDER BY date_created DESC" );
-		$fids = array();
+		$friendships = self::get_friendships( $user_id, $args );
 
-		for ( $i = 0, $count = count( $friends ); $i < $count; ++$i ) {
-			if ( !empty( $assoc_arr ) ) {
-				$fids[] = array( 'user_id' => ( $friends[$i]->friend_user_id == $user_id ) ? $friends[$i]->initiator_user_id : $friends[$i]->friend_user_id );
+		$fids = array();
+		foreach ( $friendships as $friendship ) {
+			if ( ! empty( $assoc_arr ) ) {
+				$fids[] = array( 'user_id' => ( $friendship->friend_user_id == $user_id ) ? $friendship->initiator_user_id : $friendship->friend_user_id );
 			} else {
-				$fids[] = ( $friends[$i]->friend_user_id == $user_id ) ? $friends[$i]->initiator_user_id : $friends[$i]->friend_user_id;
+				$fids[] = ( $friendship->friend_user_id == $user_id ) ? $friendship->initiator_user_id : $friendship->friend_user_id;
 			}
 		}
 
@@ -254,11 +356,27 @@ class BP_Friends_Friendship {
 	 * @return int|bool The ID of the friendship object if found, otherwise false.
 	 */
 	public static function get_friendship_id( $user_id, $friend_id ) {
-		global $wpdb;
+		$friendship_id = null;
 
-		$bp = buddypress();
+		// Can't friend yourself.
+		if ( $user_id == $friend_id ) {
+			return $friendship_id;
+		}
 
-		return $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$bp->friends->table_name} WHERE ( initiator_user_id = %d AND friend_user_id = %d ) OR ( initiator_user_id = %d AND friend_user_id = %d ) AND is_confirmed = 1", $user_id, $friend_id, $friend_id, $user_id ) );
+		/*
+		 * Find friendships where the possible_friend_userid is the
+		 * initiator or friend.
+		 */
+		$args = array(
+			'initiator_user_id' => $friend_id,
+			'friend_user_id'    => $friend_id
+		);
+		$result = self::get_friendships( $user_id, $args, 'OR' );
+		if ( $result ) {
+			$friendship_id = current( $result )->id;
+		}
+
+		return $friendship_id;
 	}
 
 	/**
@@ -274,11 +392,8 @@ class BP_Friends_Friendship {
 		$friend_requests = wp_cache_get( $user_id, 'bp_friends_requests' );
 
 		if ( false === $friend_requests ) {
-			global $wpdb;
-
-			$bp = buddypress();
-
-			$friend_requests = $wpdb->get_col( $wpdb->prepare( "SELECT initiator_user_id FROM {$bp->friends->table_name} WHERE friend_user_id = %d AND is_confirmed = 0", $user_id ) );
+			//@TODO: this uses already cached data, so maybe `bp_friends_requests` should go away?
+			$friend_requests = self::get_friend_user_ids( $user_id, true );
 
 			wp_cache_set( $user_id, $friend_requests, 'bp_friends_requests' );
 		}
@@ -299,21 +414,25 @@ class BP_Friends_Friendship {
 	public static function total_friend_count( $user_id = 0 ) {
 		global $wpdb;
 
-		if ( empty( $user_id ) )
+		if ( empty( $user_id ) ) {
 			$user_id = ( bp_displayed_user_id() ) ? bp_displayed_user_id() : bp_loggedin_user_id();
-
-		$bp = buddypress();
+		}
 
 		/*
 		 * This is stored in 'total_friend_count' usermeta.
 		 * This function will recalculate, update and return.
 		 */
 
-		$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(id) FROM {$bp->friends->table_name} WHERE (initiator_user_id = %d OR friend_user_id = %d) AND is_confirmed = 1", $user_id, $user_id ) );
+		$args = array(
+				'is_confirmed' => 1,
+		);
+		$friendships = self::get_friendships( $user_id, $args );
+		$count       = count( $friendships );
 
 		// Do not update meta if user has never had friends.
-		if ( empty( $count ) && !bp_get_user_meta( $user_id, 'total_friend_count', true ) )
+		if ( ! $count && ! bp_get_user_meta( $user_id, 'total_friend_count', true ) ) {
 			return 0;
+		}
 
 		bp_update_user_meta( $user_id, 'total_friend_count', (int) $count );
 
@@ -408,13 +527,25 @@ class BP_Friends_Friendship {
 			return false;
 		}
 
-		$bp = buddypress();
+		// Can't friend yourself.
+		if ( $initiator_userid == $possible_friend_userid ) {
+			return 'not_friends';
+		}
 
-		$result = $wpdb->get_results( $wpdb->prepare( "SELECT id, initiator_user_id, is_confirmed FROM {$bp->friends->table_name} WHERE (initiator_user_id = %d AND friend_user_id = %d) OR (initiator_user_id = %d AND friend_user_id = %d)", $initiator_userid, $possible_friend_userid, $possible_friend_userid, $initiator_userid ) );
+		/*
+		 * Find friendships where the possible_friend_userid is the
+		 * initiator or friend.
+		 */
+		$args = array(
+			'initiator_user_id' => $possible_friend_userid,
+			'friend_user_id'    => $possible_friend_userid
+		);
+		$result = self::get_friendships( $initiator_userid, $args, 'OR' );
 
-		if ( ! empty( $result ) ) {
-			if ( 0 == (int) $result[0]->is_confirmed ) {
-				$status = $initiator_userid == $result[0]->initiator_user_id ? 'pending' : 'awaiting_response';
+		if ( $result ) {
+			$friendship = current( $result );
+			if ( ! $friendship->is_confirmed ) {
+				$status = $initiator_userid == $friendship->initiator_user_id ? 'pending' : 'awaiting_response';
 			} else {
 				$status = 'is_friend';
 			}
@@ -470,7 +601,7 @@ class BP_Friends_Friendship {
 	 * @param int $friendship_id ID of the friendship to be accepted.
 	 * @return int Number of database rows updated.
 	 */
-	public static function accept($friendship_id) {
+	public static function accept( $friendship_id ) {
 		global $wpdb;
 
 		$bp = buddypress();
@@ -486,7 +617,7 @@ class BP_Friends_Friendship {
 	 * @param int $friendship_id ID of the friendship to be withdrawn.
 	 * @return int Number of database rows deleted.
 	 */
-	public static function withdraw($friendship_id) {
+	public static function withdraw( $friendship_id ) {
 		global $wpdb;
 
 		$bp = buddypress();
@@ -502,7 +633,7 @@ class BP_Friends_Friendship {
 	 * @param int $friendship_id ID of the friendship to be rejected.
 	 * @return int Number of database rows deleted.
 	 */
-	public static function reject($friendship_id) {
+	public static function reject( $friendship_id ) {
 		global $wpdb;
 
 		$bp = buddypress();
@@ -730,6 +861,12 @@ class BP_Friends_Friendship {
 		// Loop through friend_ids and update their counts.
 		foreach ( (array) $friend_ids as $friend_id ) {
 			BP_Friends_Friendship::total_friend_count( $friend_id );
+			// Delete cached friendships.
+			wp_cache_delete( $friend_id, 'bp_friends_friendships' );
 		}
+
+		// Delete cached friendships.
+		wp_cache_delete( $user_id, 'bp_friends_friendships' );
+
 	}
 }
