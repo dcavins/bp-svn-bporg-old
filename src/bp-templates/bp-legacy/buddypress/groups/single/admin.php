@@ -267,15 +267,17 @@ do_action( 'bp_before_group_admin_content' ); ?>
 
 			<?php while ( bp_members() ) : bp_the_member(); ?>
 			<li>
-				<?php echo bp_core_fetch_avatar( array( 'item_id' => bp_get_member_user_id(), 'type' => 'thumb', 'width' => 30, 'height' => 30, 'alt' => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_member_name() ) ) ); ?>
-				<h5>
-					<a href="<?php bp_member_permalink(); ?>"> <?php bp_member_name(); ?></a>
+				<div class="item-avatar">
+					<?php echo bp_core_fetch_avatar( array( 'item_id' => bp_get_member_user_id(), 'type' => 'thumb', 'width' => 30, 'height' => 30, 'alt' => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_member_name() ) ) ); ?>
+				</div>
+				<a href="<?php bp_member_permalink(); ?>"> <?php bp_member_name(); ?></a>
 					<?php if ( count( bp_group_admin_ids( false, 'array' ) ) > 1 ) : ?>
-					<span class="small">
-						<a class="button confirm admin-demote-to-member" href="<?php bp_group_member_demote_link( bp_get_member_user_id() ); ?>"><?php _e( 'Demote to Member', 'buddypress' ); ?></a>
-					</span>
+					<div class="member-list-actions">
+						<span class="small">
+							<a class="button confirm admin-demote-to-member" href="<?php bp_group_member_demote_link( bp_get_member_user_id() ); ?>"><?php _e( 'Demote to Member', 'buddypress' ); ?></a>
+						</span>
+					</div>
 					<?php endif; ?>
-				</h5>
 			</li>
 			<?php endwhile; ?>
 
@@ -294,14 +296,18 @@ do_action( 'bp_before_group_admin_content' ); ?>
 
 					<?php while ( bp_members() ) : bp_the_member(); ?>
 					<li>
-						<?php echo bp_core_fetch_avatar( array( 'item_id' => bp_get_member_user_id(), 'type' => 'thumb', 'width' => 30, 'height' => 30, 'alt' => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_member_name() ) ) ); ?>
-						<h5>
-							<a href="<?php bp_member_permalink(); ?>"> <?php bp_member_name(); ?></a>
+						<div class="item-avatar">
+							<?php echo bp_core_fetch_avatar( array( 'item_id' => bp_get_member_user_id(), 'type' => 'thumb', 'width' => 30, 'height' => 30, 'alt' => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_member_name() ) ) ); ?>
+						</div>
+
+						<a href="<?php bp_member_permalink(); ?>"> <?php bp_member_name(); ?></a>
+
+						<div class="member-list-actions">
 							<span class="small">
 								<a href="<?php bp_group_member_promote_admin_link( array( 'user_id' => bp_get_member_user_id() ) ); ?>" class="button confirm mod-promote-to-admin" title="<?php esc_attr_e( 'Promote to Admin', 'buddypress' ); ?>"><?php _e( 'Promote to Admin', 'buddypress' ); ?></a>
 								<a class="button confirm mod-demote-to-member" href="<?php bp_group_member_demote_link( bp_get_member_user_id() ); ?>"><?php _e( 'Demote to Member', 'buddypress' ); ?></a>
 							</span>
-						</h5>
+						</div>
 					</li>
 					<?php endwhile; ?>
 
@@ -337,12 +343,14 @@ do_action( 'bp_before_group_admin_content' ); ?>
 				<?php while ( bp_group_members() ) : bp_group_the_member(); ?>
 
 					<li class="<?php bp_group_member_css_class(); ?>">
-						<?php bp_group_member_avatar_mini(); ?>
 
-						<h5>
-							<?php bp_group_member_link(); ?>
+						<div class="item-avatar"><?php bp_group_member_avatar_mini(); ?></div>
 
-							<?php if ( bp_get_group_member_is_banned() ) _e( '(banned)', 'buddypress' ); ?>
+						<?php bp_group_member_link(); ?>
+
+						<?php if ( bp_get_group_member_is_banned() ) _e( '(banned)', 'buddypress' ); ?>
+
+						<div class="member-list-actions">
 
 							<span class="small">
 
@@ -370,7 +378,7 @@ do_action( 'bp_before_group_admin_content' ); ?>
 								do_action( 'bp_group_manage_members_admin_item' ); ?>
 
 							</span>
-						</h5>
+						</div>
 					</li>
 
 				<?php endwhile; ?>
