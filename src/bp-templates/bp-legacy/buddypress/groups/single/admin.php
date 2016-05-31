@@ -258,6 +258,8 @@ do_action( 'bp_before_group_admin_content' ); ?>
 	 */
 	do_action( 'bp_before_group_manage_members_admin' ); ?>
 
+	<?php bp_directory_members_search_form(); ?>
+
 	<div class="bp-widget">
 		<h4><?php _e( 'Administrators', 'buddypress' ); ?></h4>
 
