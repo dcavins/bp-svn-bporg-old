@@ -261,27 +261,32 @@ do_action( 'bp_before_group_admin_content' ); ?>
 	<div class="bp-widget">
 		<h4><?php _e( 'Administrators', 'buddypress' ); ?></h4>
 
-		<?php if ( bp_has_members( '&include='. bp_group_admin_ids() ) ) : ?>
-
+		<?php if ( bp_group_has_members( array( 'per_page' =>15, 'exclude_banned' => 0, 'group_role' => array( 'admin' ), 'type' => 'alphabetical' ) ) ) : ?>
 		<ul id="admins-list" class="item-list single-line">
 
-			<?php while ( bp_members() ) : bp_the_member(); ?>
+			<?php while ( bp_group_members() ) : bp_group_the_member(); ?>
 			<li>
-				<div class="item-avatar">
-					<?php echo bp_core_fetch_avatar( array( 'item_id' => bp_get_member_user_id(), 'type' => 'thumb', 'width' => 30, 'height' => 30, 'alt' => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_member_name() ) ) ); ?>
-				</div>
-				<a href="<?php bp_member_permalink(); ?>"> <?php bp_member_name(); ?></a>
-					<?php if ( count( bp_group_admin_ids( false, 'array' ) ) > 1 ) : ?>
+				<div class="item-avatar"><?php bp_group_member_avatar_mini(); ?></div>
+
+				<?php bp_group_member_link(); ?>
+
+				<?php if ( count( bp_group_admin_ids( false, 'array' ) ) > 1 ) : ?>
 					<div class="member-list-actions">
 						<span class="small">
-							<a class="button confirm admin-demote-to-member" href="<?php bp_group_member_demote_link( bp_get_member_user_id() ); ?>"><?php _e( 'Demote to Member', 'buddypress' ); ?></a>
+							<a class="button confirm admin-demote-to-member" href="<?php bp_group_member_demote_link(); ?>"><?php _e( 'Demote to Member', 'buddypress' ); ?></a>
 						</span>
 					</div>
-					<?php endif; ?>
+				<?php endif; ?>
 			</li>
 			<?php endwhile; ?>
 
 		</ul>
+
+		<?php else: ?>
+
+		<div id="message" class="info">
+			<p><?php _e( 'No group administrators were found.', 'buddypress' ); ?></p>
+		</div>
 
 		<?php endif; ?>
 
@@ -291,27 +296,31 @@ do_action( 'bp_before_group_admin_content' ); ?>
 		<div class="bp-widget">
 			<h4><?php _e( 'Moderators', 'buddypress' ); ?></h4>
 
-			<?php if ( bp_has_members( '&include=' . bp_group_mod_ids() ) ) : ?>
+			<?php if ( bp_group_has_members( array( 'per_page' =>15, 'exclude_banned' => 0, 'group_role' => array( 'mod' ), 'type' => 'alphabetical' ) ) ) : ?>
 				<ul id="mods-list" class="item-list single-line">
 
-					<?php while ( bp_members() ) : bp_the_member(); ?>
+					<?php while ( bp_group_members() ) : bp_group_the_member(); ?>
 					<li>
-						<div class="item-avatar">
-							<?php echo bp_core_fetch_avatar( array( 'item_id' => bp_get_member_user_id(), 'type' => 'thumb', 'width' => 30, 'height' => 30, 'alt' => sprintf( __( 'Profile picture of %s', 'buddypress' ), bp_get_member_name() ) ) ); ?>
-						</div>
+						<div class="item-avatar"><?php bp_group_member_avatar_mini(); ?></div>
 
-						<a href="<?php bp_member_permalink(); ?>"> <?php bp_member_name(); ?></a>
+						<?php bp_group_member_link(); ?>
 
 						<div class="member-list-actions">
 							<span class="small">
-								<a href="<?php bp_group_member_promote_admin_link( array( 'user_id' => bp_get_member_user_id() ) ); ?>" class="button confirm mod-promote-to-admin" title="<?php esc_attr_e( 'Promote to Admin', 'buddypress' ); ?>"><?php _e( 'Promote to Admin', 'buddypress' ); ?></a>
-								<a class="button confirm mod-demote-to-member" href="<?php bp_group_member_demote_link( bp_get_member_user_id() ); ?>"><?php _e( 'Demote to Member', 'buddypress' ); ?></a>
+								<a href="<?php bp_group_member_promote_admin_link(); ?>" class="button confirm member-promote-to-admin" title="<?php esc_attr_e( 'Promote to Admin', 'buddypress' ); ?>"><?php _e( 'Promote to Admin', 'buddypress' ); ?></a>
+								<a class="button confirm mod-demote-to-member" href="<?php bp_group_member_demote_link(); ?>"><?php _e( 'Demote to Member', 'buddypress' ); ?></a>
 							</span>
 						</div>
 					</li>
 					<?php endwhile; ?>
 
 				</ul>
+
+			<?php else: ?>
+
+			<div id="message" class="info">
+				<p><?php _e( 'No group moderators were found.', 'buddypress' ); ?></p>
+			</div>
 
 			<?php endif; ?>
 		</div>
@@ -321,7 +330,7 @@ do_action( 'bp_before_group_admin_content' ); ?>
 	<div class="bp-widget">
 		<h4><?php _e( "Members", 'buddypress' ); ?></h4>
 
-		<?php if ( bp_group_has_members( 'per_page=15&exclude_banned=0' ) ) : ?>
+		<?php if ( bp_group_has_members( array( 'exclude_admins_mods' => 1, 'per_page' => 15, 'exclude_banned' => 0, 'type' => 'alphabetical' ) ) ) : ?>
 
 			<?php if ( bp_group_member_needs_pagination() ) : ?>
 
@@ -403,7 +412,7 @@ do_action( 'bp_before_group_admin_content' ); ?>
 		<?php else: ?>
 
 			<div id="message" class="info">
-				<p><?php _e( 'This group has no members.', 'buddypress' ); ?></p>
+				<p><?php _e( 'No group members were found.', 'buddypress' ); ?></p>
 			</div>
 
 		<?php endif; ?>
